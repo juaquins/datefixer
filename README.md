@@ -34,3 +34,14 @@ python -m pip install -r requirements.txt
 Notes:
 - This is a prototype intended to be readable and extensible. Commands use `exiftool` where possible for maximum compatibility, and fall back to python `exif`-based parsing when not available.
 - Tests are simple and don't exercise external binaries.
+- Tests are included; some are unit tests and some optionally exercise
+	`exiftool` when available. To run the integration tests that need
+	real images, put those test files under `tests/fixtures/` with the
+	names described below.
+
+Test fixtures and where to put your images
+- Put any real images you want to use for integration under:
+	`file-date-helpers/gpt5-mini/tests/fixtures/`
+- The integration test expects one sample named `sample1.jpg`.
+- You can add additional files; tests will skip integration checks if
+	`exiftool` is not installed.
