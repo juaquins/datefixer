@@ -1,10 +1,12 @@
-fdh — File Date Helpers (prototype)
+datefixer — File Date Helpers (prototype)
 
 A small, modular toolset to inspect and set filesystem timestamps and EXIF metadata, and to transcode videos while preserving metadata.
 
 Usage (module):
 
-- Run CLI via module: `python -m fdh <command> [options]`
+- Run CLI via module: `python -m datefixer <command> [options]`
+
+Or after `pip install .` you can use the console script `datefixer`.
 
 Commands:
 - `set-system`  : Set system (filesystem) times from EXIF, reference files, or filename inference.

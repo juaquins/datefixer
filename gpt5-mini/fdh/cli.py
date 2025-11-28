@@ -1,7 +1,7 @@
 """Command-line interface for fdh package."""
 import argparse
 from pathlib import Path
-from . import exiftool, set_times, exif_setter, transcode, utils
+from . import exiftool, set_times, exif_setter, transcode, utils, date_mapper
 from tqdm import tqdm
 
 
@@ -64,6 +64,48 @@ def cmd_transcode(args):
         )
 
 
+def cmd_set_dates(args):
+    # parse destinations list (comma separated)
+    dests = [d.strip() for d in args.dest.split(",")] if args.dest else []
+    src_tags = args.src or []
+    src_backups = Path(args.src_backups) if args.src_backups else None
+
+    files = list(Path().glob(args.pattern))
+    files = [f for f in files if f.is_file()]
+
+    for f in tqdm(files, disable=not args.progress):
+        candidates = date_mapper.gather_candidates(
+            f, src_tags=src_tags, src_backups=src_backups
+        )
+
+        chosen = None
+        # if interactive requested, or multiple src tags/backups present,
+        # or multiple candidates found -> prompt
+        force_interactive = (
+            args.interactive or len(src_tags) > 1 or bool(src_backups)
+        )
+        if force_interactive and len(candidates) > 1:
+            print(f"\nFile: {f}")
+            # show full exiftool output to help choice if requested
+            if args.show_exiftool:
+                print("EXIFTOOL DUMP:")
+                import json
+                print(json.dumps(exiftool.read_all_tags(f), indent=2))
+            chosen = date_mapper.interactive_choose(candidates)
+        else:
+            # auto-select first candidate if present
+            if candidates:
+                chosen = candidates[0][1]
+
+        if chosen:
+            date_mapper.apply_destinations(
+                f, dests, chosen, dry_run=args.dry_run
+            )
+            print(f"APPLIED {f} -> {chosen}")
+        else:
+            print(f"SKIPPED {f} (no choice)")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="fdh",
@@ -116,6 +158,52 @@ def main():
     p_tr.add_argument("--dry-run", action="store_true")
     p_tr.add_argument("--progress", action="store_true", default=True)
     p_tr.set_defaults(func=cmd_transcode)
+
+    p_sd = sub.add_parser(
+        "set-dates",
+        help=(
+            "Set one or more destination tags from one or more source tags or "
+            "reference backups"
+        ),
+    )
+    p_sd.add_argument("pattern", help="glob pattern to select files")
+    p_sd.add_argument(
+        "--dest",
+        required=True,
+        help=(
+            "Comma-separated list of destination tags, e.g. "
+            "'File:System:FileModifyDate,EXIF:AllDates'"
+        ),
+    )
+    p_sd.add_argument(
+        "--src",
+        action="append",
+        help=(
+            "Source tag(s) to read values from. Can be given multiple times, "
+            "e.g. --src 'EXIF:Composite:SubSecDateTimeOriginal'"
+        ),
+    )
+    p_sd.add_argument(
+        "--src-backups",
+        help=(
+            "Reference folder to search for matching filenames to obtain "
+            "dates"
+        ),
+    )
+    p_sd.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Force interactive selection for each file",
+    )
+    p_sd.add_argument(
+        "--show-exiftool",
+        action="store_true",
+        help="Print full exiftool JSON dump when prompting",
+    )
+    p_sd.add_argument("--dry-run", action="store_true")
+    p_sd.add_argument("--progress", action="store_true", default=True)
+    p_sd.set_defaults(func=cmd_set_dates)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

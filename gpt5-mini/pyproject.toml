@@ -1,10 +1,14 @@
+
 [tool.poetry]
-name = "fdh"
+name = "datefixer"
 version = "0.0.0"
 description = "File date helpers"
 
 [tool.poetry.dependencies]
 python = ">=3.8"
+
+[tool.poetry.scripts]
+datefixer = "datefixer.cli:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
