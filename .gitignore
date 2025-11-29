@@ -15,3 +15,7 @@ dist/
 build/
 .env.local
 tests/fixtures/
+.coverage
+htmlcov/
+coverage.xml
+*.coverage
