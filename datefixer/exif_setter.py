@@ -9,7 +9,10 @@ def has_exiftool():
 
 
 def set_exif_tags(path: Path, tags: dict, dry_run: bool = False):
-    """Set multiple exif tags using exiftool. `tags` is mapping tag->value.
+    """Set multiple EXIF tags using exiftool. `tags` tag->value.
+
+    Note: you can also use `AllDates`, which sets 
+    `DateTimeOriginal`, `CreateDate` and `ModifyDate`
 
     Example:
         `set_exif_tags(Path('a.jpg'), {'AllDates': '2020:01:01 12:00:00'})`
