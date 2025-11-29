@@ -1,8 +1,15 @@
+"""Utility helpers for parsing dates and inferring dates from filenames.
+
+This module centralizes parsing logic so tests and other modules can
+re-use common heuristics for EXIF-style timestamps and filename-based
+timestamps. The functions aim to be robust and fall back to
+``dateutil.parser`` for tricky inputs.
+"""
+
 from datetime import datetime
 import re
 from dateutil import parser as dparser
 
-# common explicit formats to try first (EXIF-like and variations)
 EXPLICIT_FORMATS = [
     "%Y:%m:%d %H:%M:%S",
     "%Y:%m:%d %H:%M:%S.%f",
@@ -28,8 +35,6 @@ FILENAME_PATTERNS = [
     (r"(\d{4})_(\d{2})_(\d{2})", "%Y_%m_%d"),
 ]
 
-# WhatsApp/Google/DSC patterns could be added later; dateutil handles many
-
 
 def parse_date(s: str):
     """Try to parse many EXIF and filename timestamp formats.
@@ -38,6 +43,7 @@ def parse_date(s: str):
     dateutil.parser.parse which handles most variations and timezones.
     Returns a timezone-aware datetime when offset present, otherwise naive.
     """
+    # Fast path: None or non-string inputs
     if not s or not isinstance(s, str):
         return None
     s = s.strip()
@@ -70,7 +76,8 @@ def parse_date(s: str):
         except Exception:
             pass
 
-    # Try dateutil fallback
+    # Final fallback: dateutil which handles many messy cases, including
+    # timezone offsets and fuzzy parsing. This is slower but very robust.
     try:
         dt = dparser.parse(s2)
         return dt

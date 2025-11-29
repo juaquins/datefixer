@@ -40,8 +40,19 @@ Notes:
 	names described below.
 
 Test fixtures and where to put your images
-- Put any real images you want to use for integration under:
-	`file-date-helpers/gpt5-mini/tests/fixtures/`
-- The integration test expects one sample named `sample1.jpg`.
-- You can add additional files; tests will skip integration checks if
-	`exiftool` is not installed.
+- Put any real images you want to use for integration under: `tests/fixtures/`
+- The integration tests will run against files in `tests/fixtures/` and
+	will skip exiftool-dependent checks if `exiftool` is not installed.
+
+Note about filesystem (system) tags
+- To read or write filesystem timestamps from the CLI use the
+	``File:System:`` prefix. The supported system tags are:
+	- ``File:System:FileModifyDate``  (modification time)
+	- ``File:System:FileInodeChangeDate``  (inode/change time)
+	- ``File:System:FileCreateDate``  (creation/birth time, platform dependent)
+
+Note about EXIF tags:
+- You can add `AllDates` as a dest tag.
+
+When passing destination tags to the CLI or library functions, include one
+of the above if you want to modify the corresponding system timestamp.

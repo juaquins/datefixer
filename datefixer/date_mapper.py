@@ -1,103 +1,146 @@
-from pathlib import Path
+"""Helpers that map and apply dates for media files.
+
+This module provides helpers to collect candidate datetimes from
+EXIF metadata, filesystem timestamps, and reference backups and to
+apply chosen datetimes to files (both filesystem times and EXIF tags).
+
+The functions are written to be small and testable; the CLI uses
+these helpers so unit tests can exercise logic without running the
+console command.
+"""
+
+from typing import List, Tuple, Optional, Literal
 from datetime import datetime
-from typing import List, Tuple, Optional
-from . import exiftool, set_times, exif_setter, utils
+from pathlib import Path
+from enum import StrEnum
 import glob
+from . import exiftool, set_times, exif_setter, utils
+
+ALL_FS_TAGS = {
+    'File:System:FileAccessDate',
+    'File:System:FileModifyDate',
+    'File:System:FileInodeChangeDate',
+    'File:System:CreatedDate',
+}
 
 
-def system_tag_to_datetime(path: Path, tag: str) -> Optional[datetime]:
+def system_tag_to_datetime(
+        path: Path,
+        tag: str
+) -> Optional[datetime]:
+    """Return a datetime for common filesystem-derived tags.
+
+    Args:
+        path: Path to the file to inspect.
+        tag: Name of the filesystem tag (e.g. "FileModifyDate").
+
+    Returns:
+        A :class:`datetime.datetime` instance or ``None`` if unavailable.
+    """
     st = path.stat()
-    if tag.endswith("FileModifyDate"):
-        return datetime.fromtimestamp(st.st_mtime)
-    if tag.endswith("FileInodeChangeDate"):
-        return datetime.fromtimestamp(st.st_ctime)
-    if tag.endswith("FileCreateDate"):
-        try:
-            return datetime.fromtimestamp(st.st_birthtime)
-        except Exception:
-            return datetime.fromtimestamp(st.st_mtime)
-    return None
+
+    match tag:
+        case 'File:System:FileAccessDate':
+            return datetime.fromtimestamp(st.st_atime)  # File Accessed
+        case 'File:System:FileModifyDate':
+            return datetime.fromtimestamp(st.st_mtime)  # File Modified
+        case 'File:System:FileInodeChangeDate':
+            return datetime.fromtimestamp(st.st_ctime)  # File Changed
+        case 'File:System:CreatedDate':
+            return datetime.fromtimestamp(st.st_birthtime)  # File Created
+        case _:
+            return None
+
+
+def candidates_for_file(
+        path: Path,
+        tags: List[str],
+        prefix=''
+) -> List[Tuple[str, datetime]]:
+    if not len(tags) > 0:
+        return []
+    use_all_tags = tags[0] in ['*', 'ALL']
+
+    candidates = []
+    file_exif_tags = exiftool.read_all_tags(path)
+
+    if use_all_tags:
+        for tag, dt_str in file_exif_tags.items():
+            dt = utils.parse_date(dt_str) if isinstance(dt_str, str) else None
+            if dt:
+                candidates.append((f"{prefix}{tag}", dt))
+        for tag in ALL_FS_TAGS:
+            dt = system_tag_to_datetime(path, tag)
+            if dt:
+                candidates.append((f"{prefix}{tag}", dt))
+    else:
+        for tag in tags:
+            if tag in ALL_FS_TAGS:
+                dt = system_tag_to_datetime(path, tag)
+                if dt:
+                    candidates.append((f"{prefix}{tag}", dt))
+            elif tag in file_exif_tags:
+                dt_str = file_exif_tags[tag]
+                dt = utils.parse_date(dt_str) if isinstance(dt_str, str) else None
+                if dt:
+                    candidates.append((f"{prefix}{tag}", dt))
+    return candidates
 
 
 def gather_candidates(
     path: Path,
     src_tags: List[str],
-    src_backups: Optional[Path] = None,
+    backups_path: Optional[Path] = None,
+    backups_tags: Optional[List[str]] = None
 ) -> List[Tuple[str, datetime]]:
-    candidates: List[Tuple[str, datetime]] = []
-    exif_data = exiftool.read_all_tags(path)
+    """Collect candidate datetimes for ``path``.
 
-    for tag in src_tags:
-        if tag.startswith("EXIF:") or (
-            ":" in tag and not tag.startswith("File:System:")
-        ):
-            key = tag.split("EXIF:", 1)[-1]
-            val = exif_data.get(key)
-            if not val:
-                val = exif_data.get(key.split(":")[-1])
-            if val:
-                if isinstance(val, list):
-                    for v in val:
-                        dt = utils.parse_date(v)
-                        if dt:
-                            candidates.append((f"{tag}: {v}", dt))
-                elif isinstance(val, str):
-                    dt = utils.parse_date(val)
-                    if dt:
-                        candidates.append((f"{tag}: {val}", dt))
-        elif tag.startswith("File:System:"):
-            sys_tag = tag.split("File:System:", 1)[-1]
-            dt = system_tag_to_datetime(path, sys_tag)
-            if dt:
-                candidates.append((f"{tag} (filesystem)", dt))
-        else:
-            val = exif_data.get(tag)
-            if val:
-                dt = utils.parse_date(val) if isinstance(val, str) else None
-                if dt:
-                    candidates.append((f"{tag}: {val}", dt))
+    The function inspects EXIF metadata (via :func:`exiftool.read_all_tags`),
+    filesystem timestamps (via :func:`system_tag_to_datetime`), and optional
+    backup files in ``backups_path``. Results are de-duplicated.
 
-    if src_backups:
-        name = path.name
+    Args:
+        path: File to inspect.
+        src_tags: List of tag selectors (EXIF or File:System tags).
+        backups_path: Folder with reference files to search for matching names.
+        backups_tags: List of tag selectors.
+
+    Note:
+        To read or write filesystem timestamps explicitly, use the
+        ``File:System:`` prefix with one of the following supported tags:
+        ``File:System:FileModifyDate``, ``File:System:FileInodeChangeDate``,
+        or ``File:System:FileCreateDate``.
+
+    Returns:
+        A list of tuples ``(description, datetime)`` describing
+        candidate dates.
+    """
+    # Collect candidate datetimes from EXIF, filesystem, and backup files.
+    # Each candidate is a tuple (description, datetime).
+    candidates = candidates_for_file(path, src_tags, prefix=f'{path.name}: ')
+
+    # If a reference backups folder is provided, try to find matching
+    # filenames under it (recursive) and extract times from those files.
+    if backups_path:
+        if backups_tags is None:
+            backups_tags = ['*']
         matches = glob.glob(
-            str(Path(src_backups) / "**" / name), recursive=True
+            str(Path(backups_path) / "**" / path.name), recursive=True
         )
-        for m in matches:
-            mpath = Path(m)
-            ed = exiftool.earliest_time_from_exiftool(mpath)
-            if ed:
-                candidates.append((f"backup:{mpath} (exif)", ed))
-            cts = system_tag_to_datetime(mpath, "FileCreateDate")
-            if cts:
-                candidates.append((f"backup:{mpath} (create)", cts))
-            mts = system_tag_to_datetime(mpath, "FileModifyDate")
-            if mts:
-                candidates.append((f"backup:{mpath} (modify)", mts))
-
-    seen = {}
-    out = []
-    for desc, dt in candidates:
-        key = dt.isoformat()
-        if key not in seen:
-            seen[key] = desc
-            out.append((desc, dt))
-    return out
+        for file in matches:
+            candidates += candidates_for_file(
+                path, backups_tags,
+                prefix=f"backup: {Path(file).relative_to(backups_path)}: "
+            )
+    return candidates
 
 
 def apply_destinations(
     path: Path, dests: List[str], dt: datetime, dry_run: bool = False
 ):
     for d in dests:
-        if d.startswith("File:System:"):
-            set_times.apply_system_time(path, dt, dry_run=dry_run)
-        elif d.startswith("EXIF:") or d.startswith("Exif:"):
-            tag_to_set = (
-                d.split("EXIF:", 1)[-1] if d.startswith("EXIF:") else d
-            )
-            dt_str = dt.strftime("%Y:%m:%d %H:%M:%S")
-            exif_setter.set_exif_tags(
-                path, {tag_to_set: dt_str}, dry_run=dry_run
-            )
+        if d in ALL_FS_TAGS:
+            set_times.apply_system_time(path, d, dt, dry_run=dry_run)
         else:
             dt_str = dt.strftime("%Y:%m:%d %H:%M:%S")
             exif_setter.set_exif_tags(path, {d: dt_str}, dry_run=dry_run)

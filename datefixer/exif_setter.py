@@ -23,6 +23,8 @@ def set_exif_tags(path: Path, tags: dict, dry_run: bool = False):
     cmd.append(str(path))
 
     if dry_run:
+        # Dry run prints the command instead of executing it so tests and
+        # users can verify what would be written without changing files.
         print("DRY RUN:", " ".join(cmd))
         return True
 

@@ -1,0 +1,17 @@
+.DS_Store
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+.env
+*.pyc
+*.pyo
+*.pyd
+*.swp
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+.env.local
+tests/fixtures/

@@ -16,9 +16,8 @@ def test_gather_candidates_from_exif(monkeypatch, tmp_path):
             )
         },
     )
-    res = date_mapper.gather_candidates(
-        p, ["EXIF:Composite:SubSecDateTimeOriginal"]
-    )
+    src_tags = ["Composite:SubSecDateTimeOriginal"]
+    res = date_mapper.gather_candidates(p, src_tags)
     assert any(isinstance(dt, datetime) for _, dt in res)
 
 
@@ -39,7 +38,7 @@ def test_gather_candidates_with_backups(monkeypatch, tmp_path):
     )
 
     res = date_mapper.gather_candidates(
-        main, ["File:System:FileModifyDate"], src_backups=backup_dir
+        main, ["File:System:FileModifyDate"], backups_path=backup_dir
     )
     # should include backup candidate
     assert any("backup:" in desc for desc, _ in res)
