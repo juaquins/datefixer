@@ -77,9 +77,14 @@ def test_exif_set_and_read_enhanced(tmp_path):
     assert after.get('EXIF:ExifIFD:CreateDate') == '2001:01:01 01:01:01'
     assert after.get('EXIF:IFD0:ModifyDate') == '2001:01:01 01:01:01'
 
-    # default is to not overwrite system modified like exiftool does
-    # assert before.get('File:System:FileModifyDate') == after.get('File:System:FileModifyDate')
-    # assert before.get('File:System:FileInodeChangeDate') == after.get('File:System:FileInodeChangeDate')
+    # default is to not overwrite system like exiftool does
+    static_tags = [
+        'File:System:FileModifyDate'
+        'File:System:FileInodeChangeDate'
+        'File:System:CreatedDate'
+    ]
+    for tag in static_tags:
+        assert before.get(tag) == after.get(tag)
 
     # pick a non-date tag to ensure it was not changed by the operation
     non_date_key = None
@@ -98,7 +103,8 @@ def test_apply_system_time_changes_mtime(tmp_path):
     p = copy_fixture_to(tmp_path, "IMG_20240331_212928.jpg")
     before = p.stat().st_mtime
     dt = datetime.now() - timedelta(days=365)
-    set_times.apply_system_time(p, 'File:System:FileModifyDate', dt, dry_run=False)
+    tag = 'File:System:FileModifyDate'
+    set_times.apply_system_time(p, tag, dt, dry_run=False)
     after = p.stat().st_mtime
     assert after != before
     # ensure file content untouched (size unchanged)
@@ -107,7 +113,8 @@ def test_apply_system_time_changes_mtime(tmp_path):
 
 def test_gather_with_src_tags(tmp_path):
     p = copy_fixture_to(tmp_path, "IMG_20240331_212928.jpg")
-    cands = date_mapper.gather_candidates(p, src_tags=['foo:bar', 'EXIF:fakeTag', 'foo', 'd:', ':', '::::'])
+    cands = date_mapper.gather_candidates(
+        p, src_tags=['foo:bar', 'EXIF:fakeTag', 'foo', 'd:', ':', '::::'])
     assert len(cands) == 0
 
     all_tags = [
@@ -129,7 +136,9 @@ def test_gather_with_backups_behaviour(tmp_path):
     backups_path.mkdir()
     p = copy_fixture_to(tmp_path, "PXL_20251127_044642542.RAW-01.COVER.jpg")
     copy_fixture_to(backups_path, "PXL_20251127_044642542.RAW-01.COVER.jpg")
-    cands = date_mapper.gather_candidates(p, src_tags=[], backups_path=backups_path, backups_tags=['EXIF:IFD0:ModifyDate'])
+    cands = date_mapper.gather_candidates(
+        p, src_tags=[], backups_path=backups_path,
+        backups_tags=['EXIF:IFD0:ModifyDate'])
     assert isinstance(cands, list)
     assert len(cands) >= 1
     assert any("backup:" in desc for desc, _ in cands)
@@ -140,7 +149,8 @@ def test_video_filename_inference_and_gather(tmp_path):
     dt = utils.infer_from_filename(p.name)
     assert dt is None or dt.year == 2014
 
-    cands = date_mapper.gather_candidates(p, src_tags=["File:System:FileModifyDate"]) 
+    cands = date_mapper.gather_candidates(
+        p, src_tags=["File:System:FileModifyDate"])
     assert isinstance(cands, list)
 
 
