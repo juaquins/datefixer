@@ -1,8 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 import subprocess
-import pytest
-import sys
 from datefixer import date_mapper, exiftool, exif_setter, set_times
 
 
@@ -50,7 +48,7 @@ def test_apply_destinations_writes_exif(monkeypatch, tmp_path):
 
     called = {}
 
-    def fake_set_exif_tags(path, tags, dry_run=False):
+    def fake_set_exif_tags(path, tags, dry_run=False, update_systime=False):
         called['tags'] = tags
         called['path'] = path
         called['dry'] = dry_run

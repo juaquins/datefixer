@@ -175,7 +175,7 @@ def test_set_dates_flow_monkeypatched(monkeypatch, tmp_path):
 
     calls = {}
 
-    def fake_apply(path, dests, dt, dry_run=False):
+    def fake_apply(path, dests, dt, dry_run=False, update_systime=False):
         calls['path'] = str(path)
         calls['dests'] = dests
         calls['dt'] = dt

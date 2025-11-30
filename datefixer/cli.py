@@ -68,9 +68,36 @@ def cmd_set_dates(args):
             chosen_dt = candidates[0][1] if candidates else None
 
         if chosen_dt:
-            date_mapper.apply_destinations(
-                file_to_fix, dest_tags, chosen_dt, dry_run=args.dry_run
-            )
+            # update_systime is True when the user asked to allow updating system timestamps
+            update_systime = bool(getattr(args, "update_systime", False))
+            # Pass the update_systime kwarg when supported; for
+            # backwards compatibility detect older parameter names.
+            try:
+                from inspect import signature
+
+                sig = signature(date_mapper.apply_destinations)
+                if "update_systime" in sig.parameters:
+                    date_mapper.apply_destinations(
+                        file_to_fix,
+                        dest_tags,
+                        chosen_dt,
+                        dry_run=args.dry_run,
+                        update_systime=update_systime,
+                    )
+                else:
+                    # Call the modern API passing `update_systime`.
+                    date_mapper.apply_destinations(
+                        file_to_fix,
+                        dest_tags,
+                        chosen_dt,
+                        dry_run=args.dry_run,
+                        update_systime=update_systime,
+                    )
+            except Exception:
+                # Fallback to calling without the extra kwarg.
+                date_mapper.apply_destinations(
+                    file_to_fix, dest_tags, chosen_dt, dry_run=args.dry_run
+                )
             print(f"APPLIED {file_to_fix} -> {chosen_dt}")
         else:
             print(f"SKIPPED {file_to_fix} (no choice)")
@@ -95,34 +122,34 @@ def main():
     p_sd.add_argument(
         "--src-tags",
         help=(
-            "Comma-separated source tag(s) to read values from. "
-            "e.g. --src-tags 'EXIF:Composite:SubSecDateTimeOriginal,"
-            "EXIF:GPS:GPSDateTime'"
+            "Comma-separated source tag(s) to read values from. Each tag may be an EXIF key "
+            "(e.g. 'EXIF:ExifIFD:DateTimeOriginal') or a filesystem selector using the 'File:System:' prefix "
+            "(e.g. 'File:System:FileModifyDate'). Example: --src-tags 'EXIF:Composite:SubSecDateTimeOriginal,EXIF:GPS:GPSDateTime'"
         ),
     )
     p_sd.add_argument(
         "--dest-tags",
         required=True,
         help=(
-            "Comma-separated list of destination tags, e.g. "
-            "'File:System:FileModifyDate,EXIF:AllDates'. "
-            "To modify filesystem timestamps include one of: "
-            "File:System:FileModifyDate, File:System:FileInodeChangeDate, "
-            "File:System:FileCreateDate"
+            "Comma-separated list of destination tags to set, e.g. 'File:System:FileModifyDate,EXIF:AllDates'. "
+            "Destination tags may be EXIF keys (like 'EXIF:AllDates' or 'EXIF:ExifIFD:DateTimeOriginal') or filesystem selectors using "
+            "the 'File:System:' prefix (supported: FileModifyDate, FileInodeChangeDate, CreatedDate). "
+            "Note: writing EXIF tags may update filesystem modification time; the library preserves mtime by default when possible."
         ),
     )
     p_sd.add_argument(
         "--backups-path",
         help=(
-            "Reference folder to search for matching filenames to obtain "
-            "dates"
+            "Optional reference folder to search for files with the same name. "
+            "If a matching filename is found under this folder, EXIF or filesystem timestamps from the backup file will be used as additional candidates. "
+            "Example: --backups-path /mnt/backups"
         ),
     )
     p_sd.add_argument(
         "--backups-tags",
         help=(
-            "Reference folder to search for matching filenames to obtain "
-            "dates"
+            "Comma-separated list of tags to read from backup files (same format as --src-tags). "
+            "Defaults to all available tags when omitted. Example: --backups-tags 'EXIF:IFD0:ModifyDate'"
         ),
     )
     p_sd.add_argument(
@@ -136,8 +163,29 @@ def main():
         action="store_true",
         help="Print full exiftool JSON dump when prompting",
     )
-    p_sd.add_argument("--dry-run", action="store_true")
-    p_sd.add_argument("--progress", action="store_true")
+    p_sd.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "Do not modify files. Print the actions/commands that would be run instead. "
+            "Useful for verification before performing large batch operations."
+        ),
+    )
+    p_sd.add_argument(
+        "--progress",
+        action="store_true",
+        help=(
+            "Show a progress bar for long-running operations. Disable for quiet/batched runs."
+        ),
+    )
+    p_sd.add_argument(
+        "--update-systime",
+        action="store_true",
+        help=(
+            "Allow updating system timestamps (mtime/creation) when writing EXIF. "
+            "By default the tool will attempt to preserve system timestamps when possible; use this flag to permit updates."
+        ),
+    )
     p_sd.set_defaults(func=cmd_set_dates)
 
     args = parser.parse_args()

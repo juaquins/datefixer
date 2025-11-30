@@ -9,10 +9,10 @@ def has_exiftool():
 
 
 def set_exif_tags(
-        path: Path,
-        tags: dict,
-        dry_run: bool = False,
-        preserve_systime: bool = True
+    path: Path,
+    tags: dict,
+    dry_run: bool = False,
+    update_systime: bool = False
 ):
     """Set multiple EXIF tags using exiftool. `tags` tag->value.
 
@@ -23,15 +23,21 @@ def set_exif_tags(
         `set_exif_tags(Path('a.jpg'), {'AllDates': '2020:01:01 12:00:00'})`
 
     Parameters:
-        preserve_mtime: When True (default), pass exiftool's `-P` flag
-            to preserve the file's modification time. Set to False to
-            allow exiftool to update the system modified time.
+        update_systime: When False (default), attempt to preserve
+            system timestamps. This enables exiftool's
+            `overwrite_original_in_place` mode (which tries to keep
+            creation/birth time when supported) and adds the `-P` flag
+            to preserve the file modification time (mtime). When
+            True, the function uses `overwrite_original` and allows
+            exiftool to update filesystem timestamps.
     """
     if not has_exiftool():
         raise RuntimeError("exiftool not found on PATH")
-    sub_cmd = 'overwrite_original_in_place' if preserve_systime else 'overwrite_original'
+    # When update_systime is False we try to preserve system timestamps.
+    sub_cmd = 'overwrite_original' if update_systime else 'overwrite_original_in_place'
     cmd = ["exiftool", f"-{sub_cmd}"]
-    if preserve_systime:
+    if not update_systime:
+        # -P preserves the file modification time (mtime)
         cmd.append("-P")
     for tag, val in tags.items():
         cmd.append(f"-{tag}={val}")

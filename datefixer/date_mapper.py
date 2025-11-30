@@ -9,10 +9,9 @@ these helpers so unit tests can exercise logic without running the
 console command.
 """
 
-from typing import List, Tuple, Optional, Literal
+from typing import List, Tuple, Optional
 from datetime import datetime
 from pathlib import Path
-from enum import StrEnum
 import glob
 from . import exiftool, set_times, exif_setter, utils
 
@@ -136,14 +135,27 @@ def gather_candidates(
 
 
 def apply_destinations(
-    path: Path, dests: List[str], dt: datetime, dry_run: bool = False
+    path: Path,
+    dests: List[str],
+    dt: datetime,
+    dry_run: bool = False,
+    update_systime: bool = False,
 ):
+    """Apply destination tags to `path`.
+
+    update_systime: when True, allow updating system timestamps
+        (creation/modification). When False (default), attempt to
+        preserve system timestamps where supported.
+    """
     for d in dests:
         if d in ALL_FS_TAGS:
             set_times.apply_system_time(path, d, dt, dry_run=dry_run)
         else:
             dt_str = dt.strftime("%Y:%m:%d %H:%M:%S")
-            exif_setter.set_exif_tags(path, {d: dt_str}, dry_run=dry_run)
+            # Call the exif_setter with the modern `update_systime` parameter.
+            exif_setter.set_exif_tags(
+                path, {d: dt_str}, dry_run=dry_run,
+                update_systime=update_systime)
 
 
 def interactive_choose(

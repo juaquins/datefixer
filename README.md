@@ -1,6 +1,6 @@
-datefixer — File Date Helpers (prototype)
+## datefixer
 
-A small, modular toolset to inspect and set filesystem timestamps and EXIF metadata, and to transcode videos while preserving metadata.
+> A small, modular toolset to inspect and set filesystem timestamps and EXIF metadata, and to transcode videos while preserving metadata.
 
 Usage (module):
 
@@ -9,14 +9,39 @@ Usage (module):
 Or after `pip install .` you can use the console script `datefixer`.
 
 Commands:
-- `set-system`  : Set system (filesystem) times from EXIF, reference files, or filename inference.
-- `set-exif`    : Set EXIF tags on files from system times or other EXIF tags.
-- `transcode`   : Transcode videos using sensible defaults (ffmpeg), copy metadata and set output timestamps.
+- `set-dates`   : Set filesystem or EXIF times from EXIF, reference files, or filename inference.
+- `transcode` (# TODO): Transcode videos using sensible defaults (ffmpeg), copy metadata and set output timestamps.
 
-Common options:
-- `--glob` / `--pattern` : glob to select files (supports recursive globs)
-- `--dry-run` : show what would be done, don't change files
-- `--progress` : enable tqdm progress bars (default on)
+---
+
+### `set-dates`
+
+> The `set-dates` subcommand is the primary tool to set dates on many files from EXIF, backups, or filename inference.
+
+Usage example:
+
+```zsh
+datefixer set-dates "*.jpg" \
+	--src-tags "EXIF:Composite:SubSecDateTimeOriginal" \
+	--dest-tags "File:System:FileModifyDate,AllDates" \
+	--dry-run \
+	--interactive
+```
+
+Key options and behavior:
+- `pattern` (positional): glob pattern selecting files to operate on.
+- `--src-tags`: Comma-separated source tags to read candidate datetimes from. Tags may be EXIF keys like `EXIF:ExifIFD:DateTimeOriginal` or filesystem selectors using the `File:System:` prefix (e.g. `File:System:FileModifyDate`).
+- `--dest-tags`: Comma-separated list of destination tags to set. Destination tags may be EXIF keys (`AllDates` is supported) or filesystem selectors using `File:System:` (supported: `FileModifyDate`, `FileInodeChangeDate`, `CreatedDate`).
+- `--backups-path`: Optional directory to search for files with the same name; matching files found here contribute candidate dates.
+- `--backups-tags`: Comma-separated tags to read from backup files (same format as `--src-tags`). If omitted, all available tags are considered.
+- `--interactive` / `-i`: Force interactive selection when multiple candidate dates are found for a file.
+- `--show-exiftool`: When prompting interactively, print the raw `exiftool` JSON dump for the current file to aid inspection.
+- `--dry-run`: Print commands and actions without modifying files. Highly recommended before running large batches.
+- `--progress`: Show a progress bar (useful for large sets).
+
+Notes on timestamps and EXIF
+- Writing EXIF metadata with `exiftool` can also update filesystem timestamps (modification time, and on some platforms creation/birth time). The library's setter functions attempt to preserve system timestamps by default when possible; to intentionally update system timestamps you can call the programmatic API with `update_systime=True`. The CLI supports the `--update-systime` flag to allow updating system timestamps when writing EXIF.
+
 
 Requirements:
 - Python 3.8+
