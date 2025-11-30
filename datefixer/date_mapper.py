@@ -65,7 +65,7 @@ def candidates_for_file(
 
     if use_all_tags:
         for tag, dt_str in file_exif_tags.items():
-            dt = utils.parse_date(dt_str) if isinstance(dt_str, str) else None
+            dt = utils.parse_date(dt_str)
             if dt:
                 candidates.append((f"{prefix}{tag}", dt))
         for tag in ALL_FS_TAGS:
@@ -80,7 +80,7 @@ def candidates_for_file(
                     candidates.append((f"{prefix}{tag}", dt))
             elif tag in file_exif_tags:
                 dt_str = file_exif_tags[tag]
-                dt = utils.parse_date(dt_str) if isinstance(dt_str, str) else None
+                dt = utils.parse_date(dt_str)
                 if dt:
                     candidates.append((f"{prefix}{tag}", dt))
     return candidates
@@ -129,7 +129,7 @@ def gather_candidates(
         for file in matches:
             candidates += candidates_for_file(
                 path, backups_tags,
-                prefix=f"backup: {Path(file).relative_to(backups_path)}: "
+                prefix=f"{Path(file).relative_to(backups_path.parent)}: "
             )
     return candidates
 
@@ -159,20 +159,21 @@ def apply_destinations(
 
 
 def interactive_choose(
-    candidates: List[Tuple[str, datetime]]
+    cands: List[Tuple[str, datetime]]
 ) -> Optional[datetime]:
-    if not candidates:
+    if not cands:
         return None
     print("Multiple possible dates found:")
-    for i, (desc, dt) in enumerate(candidates):
+    for i, (desc, dt) in enumerate(cands):
         print(f"{i}: {desc} -> {dt}")
     print("c: custom date, s: skip, q: quit, n: next, p: prev")
     # current selection index (default 0)
     idx = 0
     while True:
-        ans = input(f"Choose index (current {idx}, default {idx}): ").strip().lower()
+        ans = input(f"Choose index (current {idx}, default {idx}): ")
+        ans = ans.strip().lower()
         if ans == "":
-            return candidates[idx][1]
+            return cands[idx][1]
         if ans == "q":
             raise SystemExit(0)
         if ans == "s":
@@ -180,21 +181,20 @@ def interactive_choose(
         if ans == "c":
             custom = input("Enter custom datetime (YYYY-MM-DD HH:MM:SS): ")
             try:
-                from datetime import datetime as _dt
-                return _dt.strptime(custom, "%Y-%m-%d %H:%M:%S")
+                return datetime.strptime(custom, "%Y-%m-%d %H:%M:%S")
             except Exception as e:
                 print("Invalid format:", e)
                 continue
         if ans == "n":
-            idx = (idx + 1) % len(candidates)
-            print(f"Selected {idx}: {candidates[idx][0]} -> {candidates[idx][1]}")
+            idx = (idx + 1) % len(cands)
+            print(f"Selected {idx}: {cands[idx][0]} -> {cands[idx][1]}")
             continue
         if ans == "p":
-            idx = (idx - 1) % len(candidates)
-            print(f"Selected {idx}: {candidates[idx][0]} -> {candidates[idx][1]}")
+            idx = (idx - 1) % len(cands)
+            print(f"Selected {idx}: {cands[idx][0]} -> {cands[idx][1]}")
             continue
         if ans.isdigit():
             new_idx = int(ans)
-            if 0 <= new_idx < len(candidates):
-                return candidates[new_idx][1]
+            if 0 <= new_idx < len(cands):
+                return cands[new_idx][1]
         print("Invalid choice")

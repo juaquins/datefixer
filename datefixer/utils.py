@@ -36,7 +36,7 @@ FILENAME_PATTERNS = [
 ]
 
 
-def parse_date(s: str):
+def parse_date(s: str) -> datetime | None:
     """Try to parse many EXIF and filename timestamp formats.
 
     Uses explicit strptime formats for speed/accuracy, then falls back to

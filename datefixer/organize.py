@@ -28,7 +28,8 @@ def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False):
 
     Args:
         pattern: Glob pattern to select files (relative to CWD).
-        dest_root: Destination root directory where year/month subdirs will be created.
+        dest_root: Destination root directory where year/month subdirs will be
+            created.
         dry_run: If True, only print planned moves and do not perform them.
 
     Returns:

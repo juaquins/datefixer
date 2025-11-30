@@ -34,7 +34,7 @@ def test_gather_candidates_from_exif(monkeypatch, tmp_path):
 def test_gather_candidates_with_backups(monkeypatch, tmp_path):
     main = tmp_path / "photo.jpg"
     main.write_text("x")
-    backup_dir = tmp_path / "backups"
+    backup_dir = tmp_path / "backups_dir_123"
     backup_dir.mkdir()
     b = backup_dir / "photo.jpg"
     b.write_text("y")
@@ -48,7 +48,7 @@ def test_gather_candidates_with_backups(monkeypatch, tmp_path):
     res = date_mapper.gather_candidates(
         main, ["File:System:FileModifyDate"], backups_path=backup_dir
     )
-    assert any("backup:" in desc for desc, _ in res)
+    assert any(backup_dir.name in desc for desc, _ in res)
 
 
 def test_apply_destinations_writes_exif(monkeypatch, tmp_path):
@@ -148,7 +148,7 @@ def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):
     called = {}
 
     def fake_transcode(
-            src, dst, crf=28, max_width=None, 
+            src, dst, crf=28, max_width=None,
             dry_run=False, move_original_to=None
     ):
         called['transcode'] = True

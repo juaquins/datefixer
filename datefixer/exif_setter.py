@@ -16,7 +16,7 @@ def set_exif_tags(
 ):
     """Set multiple EXIF tags using exiftool. `tags` tag->value.
 
-    Note: you can also use `AllDates`, which sets 
+    Note: you can also use `AllDates`, which sets
     `DateTimeOriginal`, `CreateDate` and `ModifyDate`
 
     Example:
@@ -34,7 +34,9 @@ def set_exif_tags(
     if not has_exiftool():
         raise RuntimeError("exiftool not found on PATH")
     # When update_systime is False we try to preserve system timestamps.
-    sub_cmd = 'overwrite_original' if update_systime else 'overwrite_original_in_place'
+    sub_cmd = 'overwrite_original_in_place'
+    if update_systime:
+        sub_cmd = 'overwrite_original'
     cmd = ["exiftool", f"-{sub_cmd}"]
     if not update_systime:
         # -P preserves the file modification time (mtime)
