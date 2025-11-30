@@ -1,15 +1,38 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
-[tool.poetry]
+
+[project]
 name = "datefixer"
-version = "0.0.3"
+version = "0.0.4"
 description = "File date helpers"
+authors = [
+    { name = "Juaquin" }
+]
+requires-python = ">=3.8"
 
-[tool.poetry.dependencies]
-python = ">=3.8"
+# Runtime dependencies used by the package
+dependencies = [
+    "python-dateutil>=2.8",
+    "tqdm>=4.0",
+]
 
-[tool.poetry.scripts]
+
+# Console script entry point
+[project.scripts]
 datefixer = "datefixer.cli:main"
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+
+# Tell setuptools which packages to include
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["datefixer"]
+
+
+# -------------------- #
+# Pytest configuration #
+# -------------------- #
+[tool.pytest.ini_options]
+addopts = "--cov=datefixer --color=yes --code-highlight=yes"
+testpaths = ["tests"]

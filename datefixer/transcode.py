@@ -47,34 +47,20 @@ def transcode_video(
     cmd = [
         "ffmpeg",
         "-hide_banner",
-        "-loglevel",
-        "error",
-        "-i",
-        str(src),
-        "-map_metadata",
-        "0",
-        "-c:v",
-        "libx265",
-        "-pix_fmt",
-        "yuv420p",
-        "-x265-params",
-        "no-info=1:log-level=error",
-        "-crf",
-        str(crf),
-        "-preset",
-        "medium",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "128k",
-        "-c:s",
-        "copy",
-        "-map",
-        "0:v?",
-        "-map",
-        "0:a?",
-        "-map",
-        "0:s?",
+        "-loglevel", "error",
+        "-i", str(src),
+        "-map_metadata", "0",
+        "-c:v", "libx265",
+        "-pix_fmt", "yuv420p",
+        "-x265-params", "no-info=1:log-level=error",
+        "-crf", str(crf),
+        "-preset", "medium",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-c:s", "copy",
+        "-map", "0:v?",
+        "-map", "0:a?",
+        "-map", "0:s?",
     ]
     if dst.suffix.lower() == ".mp4":
         cmd += ["-tag:v", "hvc1", "-brand", "mp42", "-movflags", "+faststart"]
@@ -94,11 +80,12 @@ def transcode_video(
         print("ffmpeg failed:", e)
         return False
 
-    # copy mtime/ctime from src to dst
     try:
         st = src.stat()
         mtime = datetime.fromtimestamp(st.st_mtime)
-        apply_system_time(dst, mtime, dry_run=dry_run)
+        apply_system_time(dst, 'File:System:FileModifyDate', mtime, dry_run=dry_run)
+        ctime = datetime.fromtimestamp(st.st_birthtime)
+        apply_system_time(dst, 'File:System:CreatedDate', ctime, dry_run=dry_run)
     except Exception:
         pass
 

@@ -140,7 +140,19 @@ def test_gather_with_backups_behaviour(tmp_path):
         p, src_tags=[], backups_path=backups_path,
         backups_tags=['EXIF:IFD0:ModifyDate'])
     assert isinstance(cands, list)
-    assert len(cands) >= 1
+    assert len(cands) == 1
+    assert any("backup:" in desc for desc, _ in cands)
+
+
+def test_gather_with_backups_no_tags(tmp_path):
+    backups_path = tmp_path / "backups"
+    backups_path.mkdir()
+    p = copy_fixture_to(tmp_path, "PXL_20251127_044642542.RAW-01.COVER.jpg")
+    copy_fixture_to(backups_path, "PXL_20251127_044642542.RAW-01.COVER.jpg")
+    cands = date_mapper.gather_candidates(
+        p, src_tags=[], backups_path=backups_path, backups_tags=None)
+    assert isinstance(cands, list)
+    assert len(cands) == 19
     assert any("backup:" in desc for desc, _ in cands)
 
 

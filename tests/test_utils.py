@@ -13,8 +13,14 @@ def test_parse_subseconds_only_returns_none():
     assert utils.parse_date("732") is None
 
 
-@pytest.mark.parametrize("s", ["notadate", "", None])
-def test_parse_invalid(s):
+@pytest.mark.parametrize("s", [
+    "notadate",
+    "",
+    None,
+    '12345678',
+    'PXL_foobar'
+])
+def test_parse_invalid_dates(s):
     assert utils.parse_date(s) is None
 
 

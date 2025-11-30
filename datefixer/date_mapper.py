@@ -166,11 +166,13 @@ def interactive_choose(
     print("Multiple possible dates found:")
     for i, (desc, dt) in enumerate(candidates):
         print(f"{i}: {desc} -> {dt}")
-    print("c: custom date, s: skip, q: quit")
+    print("c: custom date, s: skip, q: quit, n: next, p: prev")
+    # current selection index (default 0)
+    idx = 0
     while True:
-        ans = input("Choose index (default 0): ").strip().lower()
+        ans = input(f"Choose index (current {idx}, default {idx}): ").strip().lower()
         if ans == "":
-            return candidates[0][1]
+            return candidates[idx][1]
         if ans == "q":
             raise SystemExit(0)
         if ans == "s":
@@ -183,8 +185,16 @@ def interactive_choose(
             except Exception as e:
                 print("Invalid format:", e)
                 continue
+        if ans == "n":
+            idx = (idx + 1) % len(candidates)
+            print(f"Selected {idx}: {candidates[idx][0]} -> {candidates[idx][1]}")
+            continue
+        if ans == "p":
+            idx = (idx - 1) % len(candidates)
+            print(f"Selected {idx}: {candidates[idx][0]} -> {candidates[idx][1]}")
+            continue
         if ans.isdigit():
-            idx = int(ans)
-            if 0 <= idx < len(candidates):
-                return candidates[idx][1]
+            new_idx = int(ans)
+            if 0 <= new_idx < len(candidates):
+                return candidates[new_idx][1]
         print("Invalid choice")

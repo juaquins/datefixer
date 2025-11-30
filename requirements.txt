@@ -1,3 +1,4 @@
-tqdm
-python-dateutil
-pytest
+python-dateutil>=2.8
+tqdm>=4.0
+# pytest is only required for running tests
+pytest>=7.0

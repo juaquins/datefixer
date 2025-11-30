@@ -1,7 +1,16 @@
 from datetime import datetime
 from pathlib import Path
 import subprocess
-from datefixer import date_mapper, exiftool, exif_setter, set_times
+import sys
+from datefixer import (
+    date_mapper,
+    exiftool,
+    exif_setter,
+    set_times,
+    transcode as trans_mod,
+    organize as org_mod,
+    cli
+)
 
 
 def test_gather_candidates_from_exif(monkeypatch, tmp_path):
@@ -117,3 +126,63 @@ def test_earliest_time_from_exiftool_monkeypatched(monkeypatch):
     assert dt.year == 2021
     assert dt.month == 2
     assert dt.day == 3
+
+
+def test_interactive_choose_navigation(monkeypatch):
+    from datetime import datetime
+    candidates = [
+        ("one", datetime(2020, 1, 1)),
+        ("two", datetime(2021, 2, 2)),
+        ("three", datetime(2022, 3, 3)),
+    ]
+
+    # Simulate pressing 'n' (next) then Enter to accept
+    inputs = iter(["n", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt='': next(inputs))
+    res = date_mapper.interactive_choose(candidates)
+    assert isinstance(res, datetime)
+    assert res.year == 2021
+
+
+def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):
+    called = {}
+
+    def fake_transcode(
+            src, dst, crf=28, max_width=None, 
+            dry_run=False, move_original_to=None
+    ):
+        called['transcode'] = True
+        called['src'] = str(src)
+        called['dst'] = str(dst)
+        called['crf'] = crf
+        called['dry'] = dry_run
+        return True
+
+    monkeypatch.setattr(trans_mod, 'transcode_video', fake_transcode)
+
+    monkeypatch.setattr(
+        sys, 'argv', [
+            'datefixer', 'transcode', 'in.mp4', 'out.mp4',
+            '--crf', '23', '--dry-run'
+        ]
+    )
+    cli.main()
+    assert called.get('transcode') is True
+    assert called.get('crf') == 23
+
+    # organize
+    called_org = {}
+
+    def fake_organize(pattern, dest_root, dry_run=False):
+        called_org['pattern'] = pattern
+        called_org['dest'] = str(dest_root)
+        called_org['dry'] = dry_run
+        return []
+
+    monkeypatch.setattr(org_mod, 'organize_by_year', fake_organize)
+    dest = tmp_path / 'out'
+    monkeypatch.setattr(
+        sys, 'argv', ['datefixer', 'organize', '*.jpg', str(dest), '--dry-run']
+    )
+    cli.main()
+    assert called_org.get('pattern') == '*.jpg'

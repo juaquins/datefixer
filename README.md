@@ -10,7 +10,8 @@ Or after `pip install .` you can use the console script `datefixer`.
 
 Commands:
 - `set-dates`   : Set filesystem or EXIF times from EXIF, reference files, or filename inference.
-- `transcode` (# TODO): Transcode videos using sensible defaults (ffmpeg), copy metadata and set output timestamps.
+- `transcode`   : Transcode videos using sensible defaults (ffmpeg), copy metadata and set output timestamps.
+- `organize`	: Move files into YYYY folders.
 
 ---
 

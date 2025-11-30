@@ -11,6 +11,8 @@ API so tests can exercise logic without spawning subprocesses.
 import argparse
 from pathlib import Path
 from . import exiftool, date_mapper
+from . import transcode as transcode_mod
+from . import organize as organize_mod
 from tqdm import tqdm
 import json
 
@@ -103,6 +105,30 @@ def cmd_set_dates(args):
             print(f"SKIPPED {file_to_fix} (no choice)")
 
 
+def cmd_transcode(args):
+    """Handle the `transcode` subcommand."""
+    src = Path(args.src)
+    dst = Path(args.dst)
+    move_to = Path(args.move_original_to) if args.move_original_to else None
+    res = transcode_mod.transcode_video(
+        src,
+        dst,
+        crf=args.crf,
+        max_width=args.max_width,
+        dry_run=args.dry_run,
+        move_original_to=move_to,
+    )
+    if not res:
+        raise SystemExit(1)
+
+
+def cmd_organize(args):
+    """Handle the `organize` subcommand."""
+    dest = Path(args.dest_root)
+    moves = organize_mod.organize_by_year(args.pattern, dest, dry_run=args.dry_run)
+    print(f"Organized {len(moves)} files")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="datefixer",
@@ -187,6 +213,29 @@ def main():
         ),
     )
     p_sd.set_defaults(func=cmd_set_dates)
+
+    # -------- subcommand: transcode -------- #
+    p_tc = sub.add_parser(
+        "transcode",
+        help=("Transcode a single video using ffmpeg (thin wrapper)."),
+    )
+    p_tc.add_argument("src", help="Source video file")
+    p_tc.add_argument("dst", help="Destination output file")
+    p_tc.add_argument("--crf", type=int, default=28, help="CRF value for x265 encoding")
+    p_tc.add_argument("--max-width", type=int, default=None, help="Max width to scale output to")
+    p_tc.add_argument("--dry-run", action="store_true", help="Print ffmpeg command instead of running it")
+    p_tc.add_argument("--move-original-to", help="Optional folder to move original file into after transcode")
+    p_tc.set_defaults(func=cmd_transcode)
+
+    # -------- subcommand: organize -------- #
+    p_org = sub.add_parser(
+        "organize",
+        help=("Organize files into YEAR folders based on inferred dates."),
+    )
+    p_org.add_argument("pattern", help="Glob pattern to select files (e.g. '*.jpg')")
+    p_org.add_argument("dest_root", help="Destination root folder to place organized files")
+    p_org.add_argument("--dry-run", action="store_true", help="Do not move files; only print actions")
+    p_org.set_defaults(func=cmd_organize)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):
