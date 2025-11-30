@@ -58,7 +58,7 @@ def cmd_set_dates(args):
         force_interactive = (
             args.interactive  # or len(src_tags) > 1 or bool(backups_path)
         )
-        if force_interactive and len(candidates) > 1:
+        if force_interactive or len(candidates) > 1:
             print(f"\nFile: {file_to_fix}")
             if args.show_exiftool:
                 print("EXIFTOOL DUMP:")

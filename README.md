@@ -22,10 +22,14 @@ Usage example:
 
 ```zsh
 datefixer set-dates "*.jpg" \
-	--src-tags "EXIF:Composite:SubSecDateTimeOriginal" \
 	--dest-tags "File:System:FileModifyDate,AllDates" \
+	--src-tags "EXIF:Composite:SubSecDateTimeOriginal" \
+	--backups_path="./backups" \
+	--backups_tags="File:System:FileModifyDate,AllDates" \
+	--update-systime
 	--dry-run \
-	--interactive
+	--interactive \
+	--progress
 ```
 
 Key options and behavior:
