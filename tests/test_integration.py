@@ -1,12 +1,17 @@
-import shutil
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 import subprocess
-import sys
-
 import pytest
-
-from datefixer import exiftool, exif_setter, date_mapper, utils, set_times, cli
+import shutil
+import sys
+from datefixer import (
+    exiftool,
+    exif_setter,
+    date_mapper,
+    utils,
+    set_dates,
+    cli
+)
 
 
 FIXDIR = Path(__file__).parent / "fixtures"
@@ -104,7 +109,7 @@ def test_apply_system_time_changes_mtime(tmp_path):
     before = p.stat().st_mtime
     dt = datetime.now() - timedelta(days=365)
     tag = 'File:System:FileModifyDate'
-    set_times.apply_system_time(p, tag, dt, dry_run=False)
+    set_dates.apply_system_time(p, tag, dt, dry_run=False)
     after = p.stat().st_mtime
     assert after != before
     # ensure file content untouched (size unchanged)

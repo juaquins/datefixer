@@ -6,7 +6,7 @@ from datefixer import (
     date_mapper,
     exiftool,
     exif_setter,
-    set_times,
+    set_dates,
     transcode as trans_mod,
     organize as org_mod,
     cli
@@ -102,10 +102,10 @@ def test_apply_system_time_dry_run_with_setfile(monkeypatch, tmp_path, capsys):
 
     dt = datetime(2022, 3, 4, 5, 6, 7)
 
-    monkeypatch.setattr(set_times, "has_setfile", lambda: True)
+    monkeypatch.setattr(set_dates, "has_setfile", lambda: True)
 
     tag = 'File:System:CreatedDate'
-    set_times.apply_system_time(p, tag, dt, dry_run=True)
+    set_dates.apply_system_time(p, tag, dt, dry_run=True)
     out = capsys.readouterr().out
     assert "DRY RUN" in out
 
@@ -136,12 +136,11 @@ def test_interactive_choose_navigation(monkeypatch):
         ("three", datetime(2022, 3, 3)),
     ]
 
-    # Simulate pressing 'n' (next) then Enter to accept
-    inputs = iter(["n", ""])
+    # Simulate pressing 'n' (next) which should return a navigation token
+    inputs = iter(["n"])
     monkeypatch.setattr("builtins.input", lambda prompt='': next(inputs))
     res = date_mapper.interactive_choose(candidates)
-    assert isinstance(res, datetime)
-    assert res.year == 2021
+    assert res == 'next'
 
 
 def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):

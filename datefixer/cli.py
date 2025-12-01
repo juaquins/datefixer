@@ -10,99 +10,41 @@ API so tests can exercise logic without spawning subprocesses.
 """
 import argparse
 from pathlib import Path
-from . import exiftool, date_mapper
+from . import set_dates as set_dates_mod
 from . import transcode as transcode_mod
 from . import organize as organize_mod
-from tqdm import tqdm
-import json
 
 
 def cmd_set_dates(args):
-    """Handle the ``set-dates`` subcommand.
+    """Wrapper that delegates to the `set_dates` module implementation.
 
-    Args:
-        args: argparse.Namespace produced by the argument parser.
-            Expected attributes include: ``pattern``, ``dest``, ``src``,
-            ``backups_path``, ``interactive``, ``show_exiftool``,
-            ``backups_tags``, ``dry_run``, and ``progress``.
+    This wrapper extracts individual arguments from the argparse Namespace
+    and passes them explicitly to the implementation.
     """
-    dest_tags = [d.strip() for d in args.dest_tags.split(",")] if args.dest_tags else []
-    src_tags = [s.strip() for s in args.src_tags.split(",")] if args.src_tags else []
-    backups_path = Path(args.backups_path) if args.backups_path else None
-    backups_tags = [
-        s.strip() for s in args.backups_tags.split(",")
-    ] if args.backups_tags else []
+    _arg_dt = getattr(args, "dest_tags", None)
+    dest_tags = [d.strip() for d in _arg_dt.split(",")] if _arg_dt else []
 
-    # TODO: simplify
-    # this seems more complicated than it needs to be if we were using glob.glob
-    # ---
-    # Support absolute and relative glob patterns. If an absolute pattern is
-    # provided (e.g. /tmp/*.jpg), Path.glob on the current working directory
-    # will raise. Detect that case and run the glob on the pattern's parent
-    # directory instead.
-    pattern_path = Path(args.pattern)
-    if pattern_path.is_absolute():
-        parent = pattern_path.parent
-        name = pattern_path.name
-        files = list(parent.glob(name))
-    else:
-        files = list(Path().glob(args.pattern))
-    files = [f for f in files if f.is_file()]
+    _arg_st = getattr(args, "src_tags", None)
+    src_tags = [s.strip() for s in _arg_st.split(",")] if _arg_st else []
 
-    for file_to_fix in tqdm(files, disable=not args.progress):
-        candidates = date_mapper.gather_candidates(
-            file_to_fix,
-            src_tags=src_tags,
-            backups_path=backups_path,
-            backups_tags=backups_tags,
-        )
+    _arg_bt = getattr(args, "backups_tags", None)
+    backups_tags = [b.strip() for b in _arg_bt.split(",")] if _arg_bt else []
 
-        force_interactive = (
-            args.interactive  # or len(src_tags) > 1 or bool(backups_path)
-        )
-        if force_interactive or len(candidates) > 1:
-            print(f"\nFile: {file_to_fix}")
-            if args.show_exiftool:
-                print("EXIFTOOL DUMP:")
-                print(json.dumps(exiftool.read_all_tags(file_to_fix), indent=2))
-            chosen_dt = date_mapper.interactive_choose(candidates)
-        else:
-            chosen_dt = candidates[0][1] if candidates else None
+    _arg_b = getattr(args, "backups_path", None)
+    backups_path = Path(_arg_b) if _arg_b else None
 
-        if chosen_dt:
-            # update_systime is True when the user asked to allow updating system timestamps
-            update_systime = bool(getattr(args, "update_systime", False))
-            # Pass the update_systime kwarg when supported; for
-            # backwards compatibility detect older parameter names.
-            try:
-                from inspect import signature
-
-                sig = signature(date_mapper.apply_destinations)
-                if "update_systime" in sig.parameters:
-                    date_mapper.apply_destinations(
-                        file_to_fix,
-                        dest_tags,
-                        chosen_dt,
-                        dry_run=args.dry_run,
-                        update_systime=update_systime,
-                    )
-                else:
-                    # Call the modern API passing `update_systime`.
-                    date_mapper.apply_destinations(
-                        file_to_fix,
-                        dest_tags,
-                        chosen_dt,
-                        dry_run=args.dry_run,
-                        update_systime=update_systime,
-                    )
-            except Exception:
-                # Fallback to calling without the extra kwarg.
-                date_mapper.apply_destinations(
-                    file_to_fix, dest_tags, chosen_dt, dry_run=args.dry_run
-                )
-            print(f"APPLIED {file_to_fix} -> {chosen_dt}")
-        else:
-            print(f"SKIPPED {file_to_fix} (no choice)")
+    set_dates_mod.cmd_set_dates(
+        pattern=args.pattern,
+        dest_tags=dest_tags,
+        src_tags=src_tags,
+        backups_path=backups_path,
+        backups_tags=backups_tags,
+        interactive=bool(getattr(args, "interactive", False)),
+        show_exiftool=bool(getattr(args, "show_exiftool", False)),
+        dry_run=bool(getattr(args, "dry_run", False)),
+        progress=bool(getattr(args, "progress", True)),
+        update_systime=bool(getattr(args, "update_systime", False)),
+    )
 
 
 def cmd_transcode(args):
@@ -125,7 +67,11 @@ def cmd_transcode(args):
 def cmd_organize(args):
     """Handle the `organize` subcommand."""
     dest = Path(args.dest_root)
-    moves = organize_mod.organize_by_year(args.pattern, dest, dry_run=args.dry_run)
+    moves = organize_mod.organize_by_year(
+        args.pattern,
+        dest,
+        dry_run=args.dry_run
+    )
     print(f"Organized {len(moves)} files")
 
 

@@ -2,7 +2,7 @@
 __all__ = [
     "cli",
     "exiftool",
-    "set_times",
+    "set_dates",
     "exif_setter",
     "transcode",
     "utils",

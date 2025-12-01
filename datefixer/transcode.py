@@ -10,7 +10,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from .set_times import apply_system_time
+from .set_dates import apply_system_time
 
 
 def has_ffmpeg():

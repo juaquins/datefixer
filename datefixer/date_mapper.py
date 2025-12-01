@@ -13,7 +13,7 @@ from typing import List, Tuple, Optional
 from datetime import datetime
 from pathlib import Path
 import glob
-from . import exiftool, set_times, exif_setter, utils
+from . import exiftool, set_dates, exif_setter, utils
 
 ALL_FS_TAGS = {
     'File:System:FileAccessDate',
@@ -149,7 +149,7 @@ def apply_destinations(
     """
     for d in dests:
         if d in ALL_FS_TAGS:
-            set_times.apply_system_time(path, d, dt, dry_run=dry_run)
+            set_dates.apply_system_time(path, d, dt, dry_run=dry_run)
         else:
             dt_str = dt.strftime("%Y:%m:%d %H:%M:%S")
             # Call the exif_setter with the modern `update_systime` parameter.
@@ -163,17 +163,36 @@ def interactive_choose(
 ) -> Optional[datetime]:
     if not cands:
         return None
-    print("Multiple possible dates found:")
-    for i, (desc, dt) in enumerate(cands):
-        print(f"{i}: {desc} -> {dt}")
-    print("c: custom date, s: skip, q: quit, n: next, p: prev")
-    # current selection index (default 0)
-    idx = 0
+
+    # Determine a file label from the first candidate's description
+    first_desc = cands[0][0]
+    file_label = first_desc.split(":", 1)[0]
+
+    # Group tags by unique datetime preserving input order
+    options: List[Tuple[datetime, List[str]]] = []
+    seen = {}
+    for desc, dt in cands:
+        # tag portion after first ': '
+        parts = desc.split(": ", 1)
+        tag = parts[1] if len(parts) > 1 else desc
+        key = dt
+        if key in seen:
+            seen[key].append(tag)
+        else:
+            seen[key] = [tag]
+            options.append((dt, [tag]))
+
+    print(f"{file_label}:")
+    for i, (dt, tags) in enumerate(options):
+        print(f"    option {i}: {dt}")
+        for t in tags:
+            print(f"        - {t}")
+
+    print("c: custom date, s: skip, q: quit, n: next file, p: previous file")
     while True:
-        ans = input(f"Choose index (current {idx}, default {idx}): ")
-        ans = ans.strip().lower()
+        ans = input("Choose option index (default 0): ").strip().lower()
         if ans == "":
-            return cands[idx][1]
+            return options[0][0]
         if ans == "q":
             raise SystemExit(0)
         if ans == "s":
@@ -186,15 +205,11 @@ def interactive_choose(
                 print("Invalid format:", e)
                 continue
         if ans == "n":
-            idx = (idx + 1) % len(cands)
-            print(f"Selected {idx}: {cands[idx][0]} -> {cands[idx][1]}")
-            continue
+            return 'next'
         if ans == "p":
-            idx = (idx - 1) % len(cands)
-            print(f"Selected {idx}: {cands[idx][0]} -> {cands[idx][1]}")
-            continue
+            return 'previous'
         if ans.isdigit():
             new_idx = int(ans)
-            if 0 <= new_idx < len(cands):
-                return cands[new_idx][1]
+            if 0 <= new_idx < len(options):
+                return options[new_idx][0]
         print("Invalid choice")
