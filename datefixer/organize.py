@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Optional
 
 
-def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False):
+def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False, birthtime_func=None):
     """Organize files matching `pattern` into `dest_root` YYYY directories.
 
     Args:
@@ -26,10 +26,17 @@ def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False):
     for p in matches:
         if not p.is_file():
             continue
-        st = p.stat()
-        dt = datetime.fromtimestamp(st.st_birthtime)
-        if not dt:
+        # Allow tests to inject a birthtime function for deterministic
+        # behavior. If not provided, fall back to the platform-specific
+        # `st_birthtime` or finally the modification time.
+        if birthtime_func is not None:
+            ts = birthtime_func(p)
+        else:
+            st = p.stat()
+            ts = getattr(st, "st_birthtime", None) or getattr(st, "st_mtime", None)
+        if ts is None:
             continue
+        dt = datetime.fromtimestamp(ts)
         year = f"{dt.year:04d}"
         target_dir = dest_root / year
         target_dir.mkdir(parents=True, exist_ok=True)

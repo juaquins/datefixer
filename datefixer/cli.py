@@ -14,6 +14,7 @@ from importlib.metadata import version
 from . import set_dates as set_dates_mod
 from . import transcode as transcode_mod
 from . import organize as organize_mod
+from . import search as search_mod
 import glob
 
 __version__ = version("datefixer")
@@ -265,6 +266,32 @@ def main():
     p_org.add_argument("dest_root", help="Destination root folder to place organized files")
     p_org.add_argument("--dry-run", action="store_true", help="Do not move files; only print actions")
     p_org.set_defaults(func=cmd_organize)
+
+    # -------- subcommand: search -------- #
+    p_search = sub.add_parser(
+        "search",
+        help=("Search files using a glob pattern and optional EXIF tag comparison."),
+    )
+    p_search.add_argument("pattern", help="Glob pattern to select files (e.g. '/path/**/*.jpg')")
+    p_search.add_argument(
+        "-c",
+        "--compare",
+        dest="compare",
+        help=("Comparison expression between two EXIF tags, e.g. 'DateTimeOriginal > DateTimeDigitized'. "
+              "Supported operators: > >= < <= == != <>")
+    )
+    p_search.add_argument(
+        "-m",
+        "--move-to",
+        dest="move_to",
+        help="Optional directory to move matched files into",
+    )
+    p_search.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Do not move files; only print matches",
+    )
+    p_search.set_defaults(func=search_mod.cmd_search)
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

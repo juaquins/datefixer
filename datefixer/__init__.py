@@ -7,4 +7,5 @@ __all__ = [
     "transcode",
     "utils",
     "date_mapper",
+    "search",
 ]
