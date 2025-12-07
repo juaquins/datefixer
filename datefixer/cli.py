@@ -10,9 +10,12 @@ API so tests can exercise logic without spawning subprocesses.
 """
 import argparse
 from pathlib import Path
+from importlib.metadata import version
 from . import set_dates as set_dates_mod
 from . import transcode as transcode_mod
 from . import organize as organize_mod
+
+__version__ = version("datefixer")
 
 
 def cmd_set_dates(args):
@@ -79,6 +82,11 @@ def main():
     parser = argparse.ArgumentParser(
         prog="datefixer",
         description="Datefixer CLI",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=__version__
     )
     sub = parser.add_subparsers(dest="cmd")
 
@@ -167,7 +175,7 @@ def main():
     )
     p_tc.add_argument("src", help="Source video file")
     p_tc.add_argument("dst", help="Destination output file")
-    p_tc.add_argument("--crf", type=int, default=28, help="CRF value for x265 encoding")
+    p_tc.add_argument("--crf", type=int, default=23, help="CRF value for x265 encoding")
     p_tc.add_argument("--max-width", type=int, default=None, help="Max width to scale output to")
     p_tc.add_argument("--dry-run", action="store_true", help="Print ffmpeg command instead of running it")
     p_tc.add_argument("--move-original-to", help="Optional folder to move original file into after transcode")

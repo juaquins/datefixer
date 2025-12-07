@@ -8,20 +8,6 @@ import shutil
 from datetime import datetime
 from typing import Optional
 
-from . import utils
-
-
-def _infer_date_for_file(path: Path) -> Optional[datetime]:
-    # Prefer filename inference, then fallback to file ctime
-    dt = utils.infer_from_filename(path.name)
-    if dt:
-        return dt
-    try:
-        st = path.stat()
-        return datetime.fromtimestamp(st.st_ctime)
-    except Exception:
-        return None
-
 
 def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False):
     """Organize files matching `pattern` into `dest_root` YYYY directories.
@@ -40,7 +26,8 @@ def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False):
     for p in matches:
         if not p.is_file():
             continue
-        dt = _infer_date_for_file(p)
+        st = p.stat()
+        dt = datetime.fromtimestamp(st.st_birthtime)
         if not dt:
             continue
         year = f"{dt.year:04d}"
