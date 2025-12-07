@@ -144,6 +144,9 @@ def test_interactive_choose_navigation(monkeypatch):
 
 
 def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):
+    f = tmp_path / "in.mp4"
+    f.write_text("x")
+
     called = {}
 
     def fake_transcode(
@@ -161,7 +164,8 @@ def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):
 
     monkeypatch.setattr(
         sys, 'argv', [
-            'datefixer', 'transcode', 'in.mp4', 'out.mp4',
+            'datefixer', 'transcode', f'{f.absolute()}', 'out.mp4',
+            '--min-size-mb', '0',
             '--crf', '23', '--dry-run'
         ]
     )

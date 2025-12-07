@@ -14,6 +14,7 @@ from importlib.metadata import version
 from . import set_dates as set_dates_mod
 from . import transcode as transcode_mod
 from . import organize as organize_mod
+import glob
 
 __version__ = version("datefixer")
 
@@ -52,19 +53,91 @@ def cmd_set_dates(args):
 
 def cmd_transcode(args):
     """Handle the `transcode` subcommand."""
-    src = Path(args.src)
-    dst = Path(args.dst)
-    move_to = Path(args.move_original_to) if args.move_original_to else None
-    res = transcode_mod.transcode_video(
-        src,
-        dst,
-        crf=args.crf,
-        max_width=args.max_width,
-        dry_run=args.dry_run,
-        move_original_to=move_to,
-    )
-    if not res:
-        raise SystemExit(1)
+    src_pattern = args.src
+    dst_arg = getattr(args, "dst", None)
+
+    def _find_files(min_size_mb, regex=None):
+        min_size_bytes = min_size_mb * 1024 * 1024
+        matches = []
+        if regex:
+            for f in glob.glob(regex, recursive=True):
+                f = Path(f)
+                if (f.is_file() and
+                    f.stat().st_size >= min_size_bytes and
+                    "originals" not in str(f) and
+                    "reduced" not in str(f)):
+                    matches.append(f)
+        else:
+            all_exts = [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv"]
+            for ext in all_exts:
+                for f in Path(".").rglob(f"*{ext}", case_sensitive=False):
+                    if (f.is_file() and
+                        f.stat().st_size >= min_size_bytes and
+                        "originals" not in str(f) and
+                        "reduced" not in str(f)):
+                        matches.append(f)
+        return matches
+
+    matches = _find_files(args.min_size_mb, src_pattern)
+    if not matches:
+        print(f"No files match pattern: {src_pattern}")
+        return
+
+    # Helper to decide destination path for a given source
+    def _dst_for(src_path: Path) -> Path:
+        if dst_arg:
+            dstp = Path(dst_arg)
+            # If dst looks like a directory (exists as dir or has no suffix), use as directory
+            if dstp.exists() and dstp.is_dir():
+                return dstp / src_path.name
+            if dstp.suffix == "":
+                # treat as directory (create if needed)
+                return dstp / src_path.name
+            # otherwise treat as specific file path (only valid when single source)
+            return dstp
+        # default: place in same dir with '.reduced' inserted before suffix
+        return src_path.with_name(f"{src_path.stem}.reduced{args.suffix or src_path.suffix}")
+
+    # single source and dst may be a file path
+    if len(matches) == 1:
+        src_path = Path(matches[0])
+        dst_path = _dst_for(src_path)
+        move_to = Path(args.move_original_to) if args.move_original_to else None
+        res = transcode_mod.transcode_video(
+            src_path,
+            dst_path,
+            crf=args.crf,
+            max_width=args.max_width,
+            dry_run=args.dry_run,
+            move_original_to=move_to,
+        )
+        if not res:
+            raise SystemExit(1)
+        return
+
+    # multiple matches -> treat dst as directory (or default to each source dir)
+    dest_dir = Path(dst_arg) if dst_arg else None
+    if dest_dir and dest_dir.suffix != "":
+        # if user passed a file-like dst for many sources, treat its parent as target dir
+        dest_dir = dest_dir.parent
+        print(f"Found {len(matches)} results, dest must be a directory. Using {dest_dir}")
+    if dest_dir:
+        dest_dir.mkdir(parents=True, exist_ok=True)
+
+    for m in matches:
+        src_path = Path(m)
+        dst_path = _dst_for(src_path)
+        move_to = Path(args.move_original_to) if args.move_original_to else None
+        res = transcode_mod.transcode_video(
+            src_path,
+            dst_path,
+            crf=args.crf,
+            max_width=args.max_width,
+            dry_run=args.dry_run,
+            move_original_to=move_to,
+        )
+        if not res:
+            print(f"transcode failed for {src_path}")
 
 
 def cmd_organize(args):
@@ -177,7 +250,9 @@ def main():
     p_tc.add_argument("dst", help="Destination output file")
     p_tc.add_argument("--crf", type=int, default=23, help="CRF value for x265 encoding")
     p_tc.add_argument("--max-width", type=int, default=None, help="Max width to scale output to")
+    p_tc.add_argument("--min-size-mb", type=int, default=100, help="Minimum size in MB (default: 100)")
     p_tc.add_argument("--dry-run", action="store_true", help="Print ffmpeg command instead of running it")
+    p_tc.add_argument("--suffix", type=str, help="")
     p_tc.add_argument("--move-original-to", help="Optional folder to move original file into after transcode")
     p_tc.set_defaults(func=cmd_transcode)
 
