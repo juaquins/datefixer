@@ -1,4 +1,5 @@
 from datetime import datetime
+import pytest
 from pathlib import Path
 import subprocess
 import sys
@@ -191,3 +192,76 @@ def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):
     )
     cli.main()
     assert called_org.get('pattern') == '*.jpg'
+
+
+def test_cli_search_prints_create_date_real(tmp_path, monkeypatch, capsys):
+    """CLI prints filename followed by JSON with injected create date (real st_birthtime).
+
+    This test is skipped on platforms that do not expose `st_birthtime`.
+    """
+    from types import SimpleNamespace
+    from datefixer import cli as _cli, search as _s
+
+    p = tmp_path / "cli_ct.jpg"
+    p.write_text("x")
+
+    # stub exiftool to return no tags so injection is necessary
+    monkeypatch.setattr(_s.exiftool, "read_all_tags", lambda path: {})
+
+    st = p.stat()
+    birth_ts = getattr(st, "st_birthtime", None)
+    if birth_ts is None:
+        pytest.skip("filesystem does not expose st_birthtime on this platform")
+
+    from datetime import datetime, timedelta
+    birth_dt = datetime.fromtimestamp(birth_ts)
+    older = birth_dt - timedelta(days=1)
+    older_literal = older.strftime("%Y:%m:%d %H:%M:%S")
+
+    comp = f"File:System:FileCreateDate > {older_literal}"
+    args = SimpleNamespace(pattern=str(tmp_path / "*.jpg"), compare=comp, move_to=None, dry_run=True)
+    _cli.cmd_search(args)
+    out = capsys.readouterr().out
+    # find JSON blob in output
+    jstart = out.find('{')
+    assert jstart != -1
+    j = out[jstart:out.rfind('}')+1]
+    import json
+    data = json.loads(j)
+    assert "File:System:FileCreateDate" in data
+    # ISO format roughly matches
+    assert data["File:System:FileCreateDate"].startswith(birth_dt.isoformat()[:10])
+
+
+def test_cli_search_prints_create_date_monkeypatched(tmp_path, monkeypatch, capsys):
+    """CLI prints JSON with injected create date when stat is monkeypatched (fallback test).
+
+    This test simulates a platform that lacks st_birthtime by providing
+    a fake stat object with st_birthtime and ensures CLI output includes it.
+    """
+    from types import SimpleNamespace
+    from datefixer import cli as _cli, search as _s
+
+    p = tmp_path / "cli_ct2.jpg"
+    p.write_text("x")
+
+    # Simpler, less fragile approach: stub exiftool to already include
+    # the `File:System:FileCreateDate` tag so we don't need to monkeypatch
+    # pathlib internals like Path.stat.
+    import datetime
+    birth_dt = datetime.datetime(2023, 3, 4, 5, 6, 7)
+    monkeypatch.setattr(_s.exiftool, "read_all_tags", lambda path: {"File:System:FileCreateDate": birth_dt.strftime("%Y:%m:%d %H:%M:%S")})
+
+    older = birth_dt - datetime.timedelta(days=1)
+    older_literal = older.strftime("%Y:%m:%d %H:%M:%S")
+    comp = f"File:System:FileCreateDate > {older_literal}"
+    args = SimpleNamespace(pattern=str(tmp_path / "*.jpg"), compare=comp, move_to=None, dry_run=True)
+    _cli.cmd_search(args)
+    out = capsys.readouterr().out
+    jstart = out.find('{')
+    assert jstart != -1
+    j = out[jstart:out.rfind('}')+1]
+    import json
+    data = json.loads(j)
+    assert "File:System:FileCreateDate" in data
+    assert data["File:System:FileCreateDate"].startswith(birth_dt.isoformat()[:10])

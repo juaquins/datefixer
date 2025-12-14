@@ -36,6 +36,32 @@ def _parse_cmp_expr(expr: str) -> Tuple[str, str, str]:
     return m.group("a"), m.group("op"), m.group("b")
 
 
+def parse_compare_tag_names(compare: Optional[str]) -> List[str]:
+    """Return a list of tag token names referenced in a compare expression.
+
+    The returned list preserves first-seen order and contains the left
+    and right sides of each comparison term (no deduplication of
+    equivalent EXIF keys is attempted beyond simple uniqueness).
+    """
+    if not compare:
+        return []
+    tags: List[str] = []
+    or_terms = [t.strip() for t in re.split(r"\s*\|\s*", compare) if t.strip()]
+    for or_term in or_terms:
+        and_terms = [t.strip() for t in re.split(r"\s*&\s*", or_term) if t.strip()]
+        for term in and_terms:
+            m = _CMP_RE.match(term)
+            if not m:
+                continue
+            a = m.group("a").strip()
+            b = m.group("b").strip()
+            if a not in tags:
+                tags.append(a)
+            if b not in tags:
+                tags.append(b)
+    return tags
+
+
 def _find_tag_value(tags: Dict[str, object], name: str) -> Optional[str]:
     """Case-insensitive substring match on tag keys and return its string value.
 
@@ -118,12 +144,39 @@ def search_files(pattern: str, compare: Optional[str] = None, move_to: Optional[
     """
     matches: List[Path] = []
     # If no compare expression provided, match all files from the pattern
+    # Pre-parse requested tag names once so we can inject filesystem-derived
+    # tags (like creation time) when they are referenced by the compare expr.
+    requested_tag_names = parse_compare_tag_names(compare)
+
     for p in glob.glob(pattern, recursive=True):
         path = Path(p)
         if not path.is_file():
             continue
 
         tags = exiftool.read_all_tags(path)
+        # If the compare expression references the filesystem creation
+        # time, inject it into the tags mapping using the conventional
+        # 'File:System:FileCreateDate' key so comparisons can use it.
+        # This uses os.stat().st_birthtime on platforms that expose it.
+        if requested_tag_names:
+            # check for a requested tag that refers to create/birth time
+            wants_create = any(
+                ("file" in tn.lower() and "create" in tn.lower()) or tn.lower().replace(" ", "") == "file:system:filecreatedate"
+                for tn in requested_tag_names
+            )
+            if wants_create:
+                try:
+                    st = path.stat()
+                    birth_ts = getattr(st, "st_birthtime", None)
+                    if birth_ts is not None:
+                        from datetime import datetime as _dt
+
+                        dt = _dt.fromtimestamp(birth_ts)
+                        # format similar to EXIF output so parse_date can understand it
+                        tags.setdefault("File:System:FileCreateDate", dt.strftime("%Y:%m:%d %H:%M:%S"))
+                except Exception:
+                    # best-effort injection only; failures should not abort search
+                    pass
 
         ok = True
         if compare:
@@ -169,16 +222,3 @@ def search_files(pattern: str, compare: Optional[str] = None, move_to: Optional[
                 matches.append(path)
 
     return matches
-
-
-def cmd_search(args):
-    """Argparse wrapper used by the CLI."""
-    matches = search_files(
-        pattern=args.pattern,
-        compare=getattr(args, "compare", None),
-        move_to=getattr(args, "move_to", None),
-        dry_run=bool(getattr(args, "dry_run", False)),
-    )
-    for m in matches:
-        print(m)
-    print(f"Found {len(matches)} match(es).")

@@ -157,6 +157,63 @@ def cmd_organize(args):
     print(f"Organized {len(moves)} files")
 
 
+def cmd_search(args):
+    """Handle the `search` subcommand (CLI wrapper).
+
+    Delegates to `datefixer.search.search_files` and prints matches.
+    """
+    matches = search_mod.search_files(
+        pattern=args.pattern,
+        compare=getattr(args, "compare", None),
+        move_to=getattr(args, "move_to", None),
+        dry_run=bool(getattr(args, "dry_run", False)),
+    )
+
+    # If the user supplied a compare expression, extract tag names referenced
+    tag_names = search_mod.parse_compare_tag_names(getattr(args, "compare", None))
+
+    import json
+
+    for m in matches:
+        # For matched files, if tag names were provided, read EXIF tags and extract only date-like tags
+        if tag_names:
+            try:
+                tags = search_mod.exiftool.read_all_tags(m)
+            except Exception:
+                tags = {}
+            # If creation time was requested, attempt to inject it here as
+            # well so CLI output matches the search behavior.
+            wants_create = any(("file" in tn.lower() and "create" in tn.lower()) or tn.lower().replace(" ", "") == "file:system:filecreatedate" for tn in tag_names)
+            if wants_create:
+                try:
+                    st = Path(m).stat()
+                    birth_ts = getattr(st, "st_birthtime", None)
+                    if birth_ts is not None:
+                        from datetime import datetime as _dt
+
+                        dt = _dt.fromtimestamp(birth_ts)
+                        tags.setdefault("File:System:FileCreateDate", dt.strftime("%Y:%m:%d %H:%M:%S"))
+                except Exception:
+                    pass
+
+            dates = {}
+            for tn in tag_names:
+                val = search_mod._find_tag_value(tags, tn)
+                coerced = search_mod._coerce_value(val)
+                # include only date-like coerced values
+                from datetime import datetime as _dt
+
+                if isinstance(coerced, _dt):
+                    dates[tn] = coerced.isoformat()
+            if dates:
+                print(f"{m} {json.dumps(dates)}")
+            else:
+                print(m)
+        else:
+            print(m)
+    print(f"Found {len(matches)} match(es).")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="datefixer",
@@ -289,7 +346,7 @@ def main():
         action="store_true",
         help="Do not move files; only print matches",
     )
-    p_search.set_defaults(func=search_mod.cmd_search)
+    p_search.set_defaults(func=cmd_search)
 
     ###########################################
 

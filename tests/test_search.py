@@ -224,3 +224,55 @@ def test_search_exiftool_special(tmp_path):
         assert f.name in names
     finally:
         _et.read_all_tags = orig
+
+
+def test_parse_compare_tag_names():
+    """Unit tests for `parse_compare_tag_names` parsing simple and chained expressions."""
+    from datefixer import search as _s
+
+    assert _s.parse_compare_tag_names(None) == []
+    assert _s.parse_compare_tag_names("") == []
+    expr = "DateTimeOriginal > DateTimeDigitized"
+    assert _s.parse_compare_tag_names(expr) == ["DateTimeOriginal", "DateTimeDigitized"]
+
+    expr2 = "A == B & C == D | E == F"
+    # order should be first-seen
+    assert _s.parse_compare_tag_names(expr2) == ["A", "B", "C", "D", "E", "F"]
+
+
+def test_search_injects_file_create_date(tmp_path, monkeypatch):
+    """Ensure `search_files` injects `File:System:FileCreateDate` from st_birthtime when requested.
+
+    This test monkeypatches `exiftool.read_all_tags` to return an empty mapping
+    (so injection is necessary). It uses the real filesystem birthtime
+    returned by `Path.stat().st_birthtime` and skips the test if the
+    platform does not expose it.
+    """
+    from datefixer import search as _s
+
+    p = tmp_path / "c.jpg"
+    p.write_text("x")
+
+    # stub exiftool to return no tags so injection is necessary
+    monkeypatch.setattr(_s.exiftool, "read_all_tags", lambda path: {})
+
+    st = p.stat()
+    birth_ts = getattr(st, "st_birthtime", None)
+    if birth_ts is None:
+        pytest.skip("filesystem does not expose st_birthtime on this platform")
+
+    from datetime import datetime, timedelta
+
+    birth_dt = datetime.fromtimestamp(birth_ts)
+    # pick an older literal (one day earlier) so the compare should be True
+    older = birth_dt - timedelta(days=1)
+    older_literal = older.strftime("%Y:%m:%d %H:%M:%S")
+
+    comp = f"File:System:FileCreateDate > {older_literal}"
+    res = _s.search_files(str(tmp_path / "*.jpg"), compare=comp, dry_run=True)
+    names = {Path(x).name for x in res}
+    assert p.name in names
+
+
+
+
