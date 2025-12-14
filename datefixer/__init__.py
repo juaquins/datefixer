@@ -1,4 +1,4 @@
-"""datefixer package — renamed from fdh"""
+"""datefixer package"""
 __all__ = [
     "cli",
     "exiftool",

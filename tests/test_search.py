@@ -139,7 +139,7 @@ def test_and_or_chaining_on_fixture():
 
 
 def test_literal_date_comparison_gt_and_lt():
-    """Test that comparing a date tag against a literal date works with > and <.
+    """Test comparing a date tag against a literal date with > and <.
 
     The test finds a date-like tag on the fixture, parses it, then compares
     against a literal older and newer date to exercise both '>' and '<'.
@@ -169,3 +169,58 @@ def test_literal_date_comparison_gt_and_lt():
     newer_literal = newer.strftime("%Y:%m:%d %H:%M:%S")
     res_lt = search.search_files(str(FIXTURES_DIR / "*.jpg"), compare=f"{k} < {newer_literal}", dry_run=True)
     assert any(Path(p).name == f.name for p in res_lt)
+
+
+def test_search_create_time(tmp_path):
+    '''Checks that filesystem create time tag is working,
+     which calls the MacOS SetDates command (vs exiftool)
+
+    `datefixer search --compare "File:System:FileCreateDate >
+    File:System:FileModifiedDate | File:System:FileCreateDate <>
+    EXIF:ExifIFD:DateTimeOriginal "./*"`
+    '''
+    # Create a sample file and provide fake tags via exiftool.read_all_tags.
+    f = tmp_path / "ct.jpg"
+    f.write_text("x")
+
+    def fake_read(path):
+        # create time is newer than modified time, and different from EXIF original
+        return {
+            "File:System:FileCreateDate": "2021:01:02 00:00:00",
+            "File:System:FileModifiedDate": "2021:01:01 00:00:00",
+            "EXIF:ExifIFD:DateTimeOriginal": "2020:01:01 00:00:00",
+        }
+
+    # Monkeypatch exiftool.read_all_tags at runtime
+    from datefixer import exiftool as _et
+    orig = _et.read_all_tags
+    _et.read_all_tags = fake_read
+    try:
+        expr = (
+            "File:System:FileCreateDate > File:System:FileModifiedDate | "
+            "File:System:FileCreateDate <> EXIF:ExifIFD:DateTimeOriginal"
+        )
+        res = search.search_files(str(tmp_path / "*.jpg"), compare=expr, dry_run=True)
+        names = {Path(p).name for p in res}
+        assert f.name in names
+    finally:
+        _et.read_all_tags = orig
+
+
+def test_search_exiftool_special(tmp_path):
+    '''Checks exiftool special tag syntax AllDates'''
+    f = tmp_path / "all.jpg"
+    f.write_text("x")
+
+    def fake_read(path):
+        return {"AllDates": "2020:01:01 00:00:00"}
+
+    from datefixer import exiftool as _et
+    orig = _et.read_all_tags
+    _et.read_all_tags = fake_read
+    try:
+        res = search.search_files(str(tmp_path / "*.jpg"), compare="AllDates == 2020:01:01 00:00:00", dry_run=True)
+        names = {Path(p).name for p in res}
+        assert f.name in names
+    finally:
+        _et.read_all_tags = orig

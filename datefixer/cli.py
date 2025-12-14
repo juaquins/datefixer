@@ -79,7 +79,12 @@ def cmd_transcode(args):
                         matches.append(f)
         return matches
 
-    matches = _find_files(args.min_size_mb, src_pattern)
+    # If the user passed an explicit existing path, accept it regardless of min-size filtering
+    sp = Path(src_pattern)
+    if sp.exists() and sp.is_file():
+        matches = [sp]
+    else:
+        matches = _find_files(args.min_size_mb, src_pattern)
     if not matches:
         print(f"No files match pattern: {src_pattern}")
         return
@@ -164,14 +169,10 @@ def main():
     )
     sub = parser.add_subparsers(dest="cmd")
 
+    ###########################################
     # -------- subcommand: set-dates -------- #
-    p_sd = sub.add_parser(
-        "set-dates",
-        help=(
-            "Set one or more destination tags from one or more source tags or "
-            "reference backups"
-        ),
-    )
+    ###########################################
+    p_sd = sub.add_parser("set-dates", help="Set destination tags from source tags / reference files / file name.")
     p_sd.add_argument("pattern", help="glob pattern to select files")
     p_sd.add_argument(
         "--src-tags",
@@ -187,7 +188,7 @@ def main():
         help=(
             "Comma-separated list of destination tags to set, e.g. 'File:System:FileModifyDate,EXIF:AllDates'. "
             "Destination tags may be EXIF keys (like 'EXIF:AllDates' or 'EXIF:ExifIFD:DateTimeOriginal') or filesystem selectors using "
-            "the 'File:System:' prefix (supported: FileModifyDate, FileInodeChangeDate, CreatedDate). "
+            "the 'File:System:' prefix (supported: FileModifyDate, FileInodeChangeDate, FileCreateDate). "
             "Note: writing EXIF tags may update filesystem modification time; the library preserves mtime by default when possible."
         ),
     )
@@ -242,11 +243,10 @@ def main():
     )
     p_sd.set_defaults(func=cmd_set_dates)
 
+    ###########################################
     # -------- subcommand: transcode -------- #
-    p_tc = sub.add_parser(
-        "transcode",
-        help=("Transcode a single video using ffmpeg (thin wrapper)."),
-    )
+    ###########################################
+    p_tc = sub.add_parser("transcode", help="Transcode files using ffmpeg.")
     p_tc.add_argument("src", help="Source video file")
     p_tc.add_argument("dst", help="Destination output file")
     p_tc.add_argument("--crf", type=int, default=23, help="CRF value for x265 encoding")
@@ -257,21 +257,19 @@ def main():
     p_tc.add_argument("--move-original-to", help="Optional folder to move original file into after transcode")
     p_tc.set_defaults(func=cmd_transcode)
 
+    ###########################################
     # -------- subcommand: organize -------- #
-    p_org = sub.add_parser(
-        "organize",
-        help=("Organize files into YEAR folders based on inferred dates."),
-    )
+    ###########################################
+    p_org = sub.add_parser("organize", help="Organize files into YEAR folders based on inferred dates.")
     p_org.add_argument("pattern", help="Glob pattern to select files (e.g. '*.jpg')")
     p_org.add_argument("dest_root", help="Destination root folder to place organized files")
     p_org.add_argument("--dry-run", action="store_true", help="Do not move files; only print actions")
     p_org.set_defaults(func=cmd_organize)
 
+    ###########################################
     # -------- subcommand: search -------- #
-    p_search = sub.add_parser(
-        "search",
-        help=("Search files using a glob pattern and optional EXIF tag comparison."),
-    )
+    ###########################################
+    p_search = sub.add_parser("search", help="Search files using a glob pattern and optional EXIF tag comparison.")
     p_search.add_argument("pattern", help="Glob pattern to select files (e.g. '/path/**/*.jpg')")
     p_search.add_argument(
         "-c",
@@ -292,6 +290,8 @@ def main():
         help="Do not move files; only print matches",
     )
     p_search.set_defaults(func=search_mod.cmd_search)
+
+    ###########################################
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

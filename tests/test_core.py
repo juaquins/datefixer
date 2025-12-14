@@ -104,7 +104,7 @@ def test_apply_system_time_dry_run_with_setfile(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setattr(set_dates, "has_setfile", lambda: True)
 
-    tag = 'File:System:CreatedDate'
+    tag = 'File:System:FileCreateDate'
     set_dates.apply_system_time(p, tag, dt, dry_run=True)
     out = capsys.readouterr().out
     assert "DRY RUN" in out
@@ -164,11 +164,13 @@ def test_cli_transcode_and_organize_monkeypatched(monkeypatch, tmp_path):
 
     monkeypatch.setattr(
         sys, 'argv', [
-            'datefixer', 'transcode', f'{f.absolute()}', 'out.mp4',
+            'datefixer', 'transcode', str(f.name), 'out.mp4',
             '--min-size-mb', '0',
             '--crf', '23', '--dry-run'
         ]
     )
+    # Change to the tmp_path directory so relative paths work
+    monkeypatch.chdir(tmp_path)
     cli.main()
     assert called.get('transcode') is True
     assert called.get('crf') == 23

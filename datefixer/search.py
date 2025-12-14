@@ -109,7 +109,7 @@ def search_files(pattern: str, compare: Optional[str] = None, move_to: Optional[
 
     Args:
         pattern: glob pattern passed to ``glob.glob(..., recursive=True)``.
-        compare: optional mini-DSL expression like "DateTimeOriginal > DateTimeDigitized".
+        compare: optional mini-DSL expression like "Exif:ExifIFD:DateTimeOriginal > DateTimeDigitized".
         move_to: optional directory to move matched files into.
         dry_run: when True, do not actually move files.
 

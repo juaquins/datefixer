@@ -35,8 +35,8 @@ datefixer set-dates "*.jpg" \
 
 Key options and behavior:
 - `pattern` (positional): glob pattern selecting files to operate on.
-- `--src-tags`: Comma-separated source tags to read candidate datetimes from. Tags may be EXIF keys like `EXIF:ExifIFD:DateTimeOriginal` or filesystem selectors using the `File:System:` prefix (e.g. `File:System:FileModifyDate`).
-- `--dest-tags`: Comma-separated list of destination tags to set. Destination tags may be EXIF keys (`AllDates` is supported) or filesystem selectors using `File:System:` (supported: `FileModifyDate`, `FileInodeChangeDate`, `CreatedDate`).
+- `--src-tags`: comma-separated source tags to read candidate datetimes from. Tags may be EXIF keys like `EXIF:ExifIFD:DateTimeOriginal` or filesystem selectors using the `File:System:` prefix (e.g. `File:System:FileModifyDate`).
+- `--dest-tags`: Comma-separated list of destination tags to set. Destination tags may be EXIF keys (`AllDates` is supported, which sets `DateTimeOriginal`, `CreateDate` and `ModifyDate`) or filesystem selectors using `File:System:` (supported: `FileModifyDate`, `FileInodeChangeDate`, `FileCreateDate`).
 - `--backups-path`: Optional directory to search for files with the same name; matching files found here contribute candidate dates.
 - `--backups-tags`: Comma-separated tags to read from backup files (same format as `--src-tags`). If omitted, all available tags are considered.
 - `--interactive` / `-i`: Force interactive selection when multiple candidate dates are found for a file.
@@ -44,8 +44,12 @@ Key options and behavior:
 - `--dry-run`: Print commands and actions without modifying files. Highly recommended before running large batches.
 - `--progress`: Show a progress bar (useful for large sets).
 
-Notes on timestamps and EXIF
+Notes on timestamps and EXIF tags
 - Writing EXIF metadata with `exiftool` can also update filesystem timestamps (modification time, and on some platforms creation/birth time). The library's setter functions attempt to preserve system timestamps by default when possible; to intentionally update system timestamps you can call the programmatic API with `update_systime=True`. The CLI supports the `--update-systime` flag to allow updating system timestamps when writing EXIF.
+- Setting and comparing tag times is supported for any EXIF tag using the full colon-separated tag syntax (e.g. `EXIF:ExifIFD:DateTimeOriginal`), and for special EXIF tag selectors in some commands (e.g. `AllDates`). File system timestamp tags are supported for the following:
+	- `File:System:FileModifyDate`
+	- `File:System:FileInodeChangeDate`
+	- `File:System:FileCreateDate`
 
 
 Requirements:

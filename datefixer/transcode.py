@@ -85,7 +85,7 @@ def transcode_video(
         mtime = datetime.fromtimestamp(st.st_mtime)
         apply_system_time(dst, 'File:System:FileModifyDate', mtime, dry_run=dry_run)
         ctime = datetime.fromtimestamp(st.st_birthtime)
-        apply_system_time(dst, 'File:System:CreatedDate', ctime, dry_run=dry_run)
+        apply_system_time(dst, 'File:System:FileCreateDate', ctime, dry_run=dry_run)
     except Exception:
         pass
 

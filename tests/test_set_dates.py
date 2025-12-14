@@ -42,8 +42,8 @@ def test_apply_system_time_modify_and_access(tmp_path, capsys):
     assert abs(after - dt.timestamp()) < 3
 
 
-def test_apply_system_time_createddate_calls_setfile(monkeypatch, tmp_path, capsys):
-    """CreatedDate branch: invoke SetFile when present and ignore errors.
+def test_apply_system_time_createdate_calls_setfile(monkeypatch, tmp_path, capsys):
+    """CreateDate branch: invoke SetFile when present and ignore errors.
 
     Monkeypatches `shutil.which` to pretend `SetFile` exists and ensures
     `subprocess.run` is called during a real run; also verifies raised
@@ -64,12 +64,12 @@ def test_apply_system_time_createddate_calls_setfile(monkeypatch, tmp_path, caps
     monkeypatch.setattr(subprocess, "run", fake_run)
 
     # dry_run should print but not call subprocess
-    set_dates.apply_system_time(f, "File:System:CreatedDate", dt, dry_run=True)
+    set_dates.apply_system_time(f, "File:System:FileCreateDate", dt, dry_run=True)
     assert not calls
     assert "DRY RUN" in capsys.readouterr().out
 
     # actual run should call SetFile
-    set_dates.apply_system_time(f, "File:System:CreatedDate", dt, dry_run=False)
+    set_dates.apply_system_time(f, "File:System:FileCreateDate", dt, dry_run=False)
     assert calls, "expected subprocess.run to be called for SetFile"
     assert isinstance(calls[0], list) and calls[0][0] == "SetFile"
 
@@ -79,7 +79,7 @@ def test_apply_system_time_createddate_calls_setfile(monkeypatch, tmp_path, caps
 
     monkeypatch.setattr(subprocess, "run", raising_run)
     # should not raise
-    set_dates.apply_system_time(f, "File:System:CreatedDate", dt, dry_run=False)
+    set_dates.apply_system_time(f, "File:System:FileCreateDate", dt, dry_run=False)
 
 
 def test_cmd_set_dates_normalizes_inputs(monkeypatch, tmp_path):

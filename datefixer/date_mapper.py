@@ -19,7 +19,8 @@ ALL_FS_TAGS = {
     'File:System:FileAccessDate',
     'File:System:FileModifyDate',
     'File:System:FileInodeChangeDate',
-    'File:System:CreatedDate',
+    'File:System:FileCreateDate',  # This is a fake tag, not stored in EXIF;
+                                   # supported for convenience with SetFile
 }
 
 
@@ -45,7 +46,7 @@ def system_tag_to_datetime(
             return datetime.fromtimestamp(st.st_mtime)  # File Modified
         case 'File:System:FileInodeChangeDate':
             return datetime.fromtimestamp(st.st_ctime)  # File Changed
-        case 'File:System:CreatedDate':
+        case 'File:System:FileCreateDate':
             return datetime.fromtimestamp(st.st_birthtime)  # File Created
         case _:
             return None

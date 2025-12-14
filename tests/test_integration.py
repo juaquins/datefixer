@@ -86,7 +86,7 @@ def test_exif_set_and_read_enhanced(tmp_path):
     static_tags = [
         'File:System:FileModifyDate'
         'File:System:FileInodeChangeDate'
-        'File:System:CreatedDate'
+        'File:System:FileCreateDate'
     ]
     for tag in static_tags:
         assert before.get(tag) == after.get(tag)
@@ -126,7 +126,7 @@ def test_gather_with_src_tags(tmp_path):
         "File:System:FileModifyDate",
         "File:System:FileAccessDate",
         "File:System:FileInodeChangeDate",
-        "File:System:CreatedDate",
+        "File:System:FileCreateDate",
         "EXIF:IFD0:ModifyDate",
         "EXIF:ExifIFD:DateTimeOriginal",
         "EXIF:ExifIFD:CreateDate",

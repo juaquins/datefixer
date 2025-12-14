@@ -26,7 +26,7 @@ def apply_system_time(
         tag: User-provided tag to update. One of:
             - File:System:FileModifyDate
             - File:System:FileAccessDate
-            - File:System:CreatedDate
+            - File:System:FileCreateDate
         dt: Datetime to apply (naive datetimes are treated as local time).
         dry_run: When True, print actions instead of performing them.
 
@@ -41,7 +41,7 @@ def apply_system_time(
         else:
             ts = dt.timestamp()
             os.utime(path, (ts, ts))
-    elif tag == 'File:System:CreatedDate' and has_setfile():
+    elif tag == 'File:System:FileCreateDate' and has_setfile():
         try:
             local_str = dt.astimezone().strftime("%m/%d/%Y %H:%M:%S")
             if dry_run:
