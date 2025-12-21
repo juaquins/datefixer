@@ -4,8 +4,7 @@ import shutil
 import subprocess
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Union
-
+from typing import Optional, List
 from . import date_mapper, exiftool
 
 

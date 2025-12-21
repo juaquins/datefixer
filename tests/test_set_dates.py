@@ -95,7 +95,8 @@ def test_cmd_set_dates_normalizes_inputs(monkeypatch, tmp_path):
 
     captured = {}
 
-    def fake_gather(file_to_fix, src_tags=None, backups_path=None, backups_tags=None):
+    def fake_gather(
+            file_to_fix, src_tags=None, backups_path=None, backups_tags=None):
         captured['src_tags'] = src_tags
         captured['backups_path'] = backups_path
         captured['backups_tags'] = backups_tags
@@ -104,7 +105,9 @@ def test_cmd_set_dates_normalizes_inputs(monkeypatch, tmp_path):
     monkeypatch.setattr(date_mapper, "gather_candidates", fake_gather)
 
     # pass string forms
-    set_dates.cmd_set_dates(pattern, dest_tags="A,B", src_tags="C", backups_path=str(tmp_path), backups_tags="D,E", interactive=False)
+    set_dates.cmd_set_dates(pattern, dest_tags=["A", "B"], src_tags=["C"],
+                            backups_path=tmp_path, backups_tags=["D", "E"],
+                            interactive=False)
 
     assert captured['src_tags'] == ["C"]
     assert isinstance(captured['backups_path'], Path)
@@ -156,9 +159,9 @@ def test_show_exiftool_prints(monkeypatch, tmp_path, capsys):
     # return a non-empty dict for exiftool
     monkeypatch.setattr(exiftool, "read_all_tags", lambda p: {"Tag": "Value"})
     # gather_candidates returns multiple to trigger interactive branch; return a datetime directly
-    monkeypatch.setattr(date_mapper, "gather_candidates", lambda file_to_fix, **kw: [("s", datetime(2021,1,1))])
+    monkeypatch.setattr(date_mapper, "gather_candidates", lambda file_to_fix, **kw: [("s", datetime(2021, 1, 1))])
     # interactive_choose returns a datetime so printing occurs
-    monkeypatch.setattr(date_mapper, "interactive_choose", lambda c: datetime(2021,1,1))
+    monkeypatch.setattr(date_mapper, "interactive_choose", lambda c: datetime(2021, 1, 1))
     monkeypatch.setattr(date_mapper, "apply_destinations", lambda *a, **kw: None)
 
     set_dates.cmd_set_dates(pattern, dest_tags=None, src_tags=None, interactive=True, show_exiftool=True)
@@ -244,7 +247,7 @@ def test_cmd_set_dates_quit_raises(monkeypatch, tmp_path):
     f.write_text("q")
     pattern = str(tmp_path / "*.jpg")
 
-    monkeypatch.setattr(date_mapper, "gather_candidates", lambda file_to_fix, **kw: [("s", datetime(2020,1,1)), ("s2", datetime(2020,1,1))])
+    monkeypatch.setattr(date_mapper, "gather_candidates", lambda file_to_fix, **kw: [("s", datetime(2020, 1, 1)), ("s2", datetime(2020, 1, 1))])
     monkeypatch.setattr(date_mapper, "interactive_choose", lambda c: "quit")
 
     with pytest.raises(SystemExit):

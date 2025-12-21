@@ -152,12 +152,54 @@ def test_gather_with_backups_behaviour(tmp_path):
 def test_gather_with_backups_no_tags(tmp_path):
     backups_path = tmp_path / "backups456"
     backups_path.mkdir()
-    p = copy_fixture_to(tmp_path, "PXL_20251127_044642542.RAW-01.COVER.jpg")
-    copy_fixture_to(backups_path, "PXL_20251127_044642542.RAW-01.COVER.jpg")
+    filename = 'PXL_20251127_044642542.RAW-01.COVER.jpg'
+    p = copy_fixture_to(tmp_path, filename)
+    copy_fixture_to(backups_path, filename)
     cands = date_mapper.gather_candidates(
         p, src_tags=[], backups_path=backups_path, backups_tags=None)
     assert isinstance(cands, list)
-    assert len(cands) == 19
+    expected_tags = {
+        "File:System:FileModifyDate": "2025:11:26 23:46:53-05:00",
+        "File:System:FileAccessDate": "2025:12:21 02:41:30-05:00",
+        "File:System:FileInodeChangeDate": "2025:11:27 20:15:27-05:00",
+        "EXIF:IFD0:ModifyDate": "2025:11:26 23:46:42",
+        "EXIF:ExifIFD:DateTimeOriginal": "2025:11:26 23:46:42",
+        "EXIF:ExifIFD:CreateDate": "2025:11:26 23:46:42",
+        "EXIF:ExifIFD:OffsetTime": "-05:00",
+        "EXIF:ExifIFD:OffsetTimeOriginal": "-05:00",
+        "EXIF:ExifIFD:OffsetTimeDigitized": "-05:00",
+        # "EXIF:ExifIFD:SubSecTime": 542,
+        # "EXIF:ExifIFD:SubSecTimeOriginal": 542,
+        # "EXIF:ExifIFD:SubSecTimeDigitized": 542,
+        "EXIF:GPS:GPSTimeStamp": "04:45:49",
+        "EXIF:GPS:GPSDateStamp": "2025:11:27",
+        "ICC_Profile:ICC-header:ProfileDateTime": "2023:03:09 10:57:00",
+        "MakerNotes:Google:CreateDate": "2025:11:26 23:46:42-05:00",
+        "MakerNotes:Google:SoftwareDate": "2025:10:27 18:09:54.000-04:00",
+        "Composite:SubSecCreateDate": "2025:11:26 23:46:42.542-05:00",
+        "Composite:SubSecDateTimeOriginal": "2025:11:26 23:46:42.542-05:00",
+        "Composite:SubSecModifyDate": "2025:11:26 23:46:42.542-05:00",
+        "Composite:GPSDateTime": "2025:11:27 04:45:49Z"
+    }
+    assert len(cands) == len(expected_tags) + len(date_mapper.ALL_FS_TAGS)
+    assert any(backups_path.name in desc for desc, _ in cands)
+
+    filename = 'IMG_20240331_212928.jpg'
+    p = copy_fixture_to(tmp_path, filename)
+    copy_fixture_to(backups_path, filename)
+    cands = date_mapper.gather_candidates(
+        p, src_tags=[], backups_path=backups_path, backups_tags=None)
+    assert isinstance(cands, list)
+    expected_tags = {
+        "File:System:FileModifyDate": "2025:11:28 04:39:49-05:00",
+        "File:System:FileAccessDate": "2025:12:21 02:41:11-05:00",
+        "File:System:FileInodeChangeDate": "2025:12:16 13:42:52-05:00",
+        "EXIF:IFD0:ModifyDate": "2024:04:04 23:06:15",
+        "EXIF:ExifIFD:DateTimeOriginal": "2024:03:31 21:29:27",
+        "EXIF:ExifIFD:CreateDate": "2024:03:31 21:29:28",
+        "ICC_Profile:ICC-header:ProfileDateTime": "2016:01:01 00:00:00"
+    }
+    assert len(cands) == len(expected_tags) + len(date_mapper.ALL_FS_TAGS)
     assert any(backups_path.name in desc for desc, _ in cands)
 
 

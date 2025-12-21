@@ -6,7 +6,6 @@ dates from filenames or filesystem timestamps.
 from pathlib import Path
 import shutil
 from datetime import datetime
-from typing import Optional
 
 
 def organize_by_year(pattern: str, dest_root: Path, dry_run: bool = False, birthtime_func=None):

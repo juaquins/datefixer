@@ -11,6 +11,7 @@ API so tests can exercise logic without spawning subprocesses.
 import argparse
 from pathlib import Path
 from importlib.metadata import version
+from datetime import datetime
 from . import set_dates as set_dates_mod
 from . import transcode as transcode_mod
 from . import organize as organize_mod
@@ -63,19 +64,23 @@ def cmd_transcode(args):
         if regex:
             for f in glob.glob(regex, recursive=True):
                 f = Path(f)
-                if (f.is_file() and
+                if (
+                    f.is_file() and
                     f.stat().st_size >= min_size_bytes and
                     "originals" not in str(f) and
-                    "reduced" not in str(f)):
+                    "reduced" not in str(f)
+                ):
                     matches.append(f)
         else:
             all_exts = [".mp4", ".avi", ".mkv", ".mov", ".flv", ".wmv"]
             for ext in all_exts:
                 for f in Path(".").rglob(f"*{ext}", case_sensitive=False):
-                    if (f.is_file() and
+                    if (
+                        f.is_file() and
                         f.stat().st_size >= min_size_bytes and
                         "originals" not in str(f) and
-                        "reduced" not in str(f)):
+                        "reduced" not in str(f)
+                    ):
                         matches.append(f)
         return matches
 
@@ -200,10 +205,7 @@ def cmd_search(args):
             for tn in tag_names:
                 val = search_mod._find_tag_value(tags, tn)
                 coerced = search_mod._coerce_value(val)
-                # include only date-like coerced values
-                from datetime import datetime as _dt
-
-                if isinstance(coerced, _dt):
+                if isinstance(coerced, datetime):
                     dates[tn] = coerced.isoformat()
             if dates:
                 print(f"{m} {json.dumps(dates)}")

@@ -11,6 +11,7 @@ import re
 from dateutil import parser as dparser
 
 EXPLICIT_FORMATS = [
+    "%Y:%m:%d",
     "%Y:%m:%d %H:%M:%S",
     "%Y:%m:%d %H:%M:%S.%f",
     "%Y-%m-%d %H:%M:%S",

@@ -12,13 +12,9 @@ and a small fake `stat` implementation to control the `st_birthtime`
 value returned for files. This allows deterministic testing without
 depending on platform-specific filesystem birthtime behavior.
 """
-from pathlib import Path
-import shutil
-import time
 from types import SimpleNamespace
-
-import pytest
-
+from pathlib import Path
+import time
 from datefixer.organize import organize_by_year
 
 
@@ -50,6 +46,7 @@ def test_organize_dry_run_and_skip_non_files(tmp_path, monkeypatch):
 
     # provide a birthtime function rather than monkeypatching Path.stat
     ts = time.mktime((2020, 1, 2, 0, 0, 0, 0, 0, 0))
+
     def bt(p):
         return ts if p.name == "photo.jpg" else None
 
@@ -83,6 +80,7 @@ def test_organize_actual_move_and_year_grouping(tmp_path, monkeypatch):
     ts2 = time.mktime((2022, 12, 31, 0, 0, 0, 0, 0, 0))
 
     mapping = {"a.jpg": ts1, "b.jpg": ts2}
+
     def bt_map(p):
         return mapping.get(p.name)
 

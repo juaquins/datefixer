@@ -272,7 +272,3 @@ def test_search_injects_file_create_date(tmp_path, monkeypatch):
     res = _s.search_files(str(tmp_path / "*.jpg"), compare=comp, dry_run=True)
     names = {Path(x).name for x in res}
     assert p.name in names
-
-
-
-
